@@ -1,0 +1,9 @@
+UnitNo,Month,Amount,Status,ReceiptNo,PaymentDate
+Shop-01,2026-01,300,Paid,REC-2026-0001,2026-09-07
+Shop-01,2026-02,300,Unpaid,,
+Shop-01,2026-03,300,Unpaid,,
+Shop-01,2026-04,300,Unpaid,,
+Flat-101,2026-01,500,Paid,REC-2026-0002,2026-09-07
+Flat-101,2026-02,500,Unpaid,,
+Flat-101,2026-03,500,Unpaid,,
+Flat-101,2026-04,500,Unpaid,,
