@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 from pathlib import Path
 from datetime import datetime
 import csv, os, urllib.parse
+import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -156,6 +157,7 @@ def pending():
         g['months'].append(d['Month']); g['total']+=float(d['Amount'])
     return render_template('pending.html', grouped=grouped, money=money)
 
-if __name__=='__main__':
-    print('Open on this laptop: http://127.0.0.1:5000')
-    app.run(host='0.0.0.0', port=5000, debug=False)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
