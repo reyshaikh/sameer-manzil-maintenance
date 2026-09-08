@@ -165,7 +165,7 @@ class GoogleSheetService:
         media = MediaFileUpload(filepath, mimetype="application/pdf", resumable=False)
         uploaded = (
             self.drive_service.files()
-            .create(body=metadata, media_body=media, fields="id,webViewLink")
+            .create(body=metadata, media_body=media, fields="id,webViewLink", supportsAllDrives=True)
             .execute()
         )
         file_id = uploaded["id"]
