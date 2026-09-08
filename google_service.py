@@ -31,29 +31,77 @@ class GoogleSheetService:
         self.charges_ws = self.sheet.worksheet("Charges_Master")
         self.receipt_ws = self.sheet.worksheet("Receipts")
         self.details_ws = self.sheet.worksheet("Receipt_Details")
-
+        self._residents_cache = None
+        self._charges_cache = None
+        self._tracker_cache = None
+        self._receipts_cache = None
+        
     @staticmethod
     def _parse_month(month_name):
         return datetime.strptime(str(month_name).strip(), "%b-%Y")
 
     def get_residents(self):
+    
+        if self._residents_cache is not None:
+            return self._residents_cache
+    
+        try:
+            rows = self.resident_ws.get_all_records()
+    
+        except Exception as e:
+    
+            print(
+                "Resident read failed:",
+                e
+            )
+    
+            return []
+    
         residents = []
-        for row in self.resident_ws.get_all_records():
-            status = str(row.get("Status", "")).strip().lower()
-            if status in ("active", "yes", "y", ""):
-                row["UnitNo"] = str(row.get("UnitNo", "")).strip()
-                row["MobileNo"] = str(row.get("MobileNo", "")).strip()
+    
+        for row in rows:
+            status = str(
+                row.get("Status", "")
+            ).strip().lower()
+    
+            if status in (
+                "active",
+                "yes",
+                "y",
+                ""
+            ):
                 residents.append(row)
+    
+        self._residents_cache = residents
+    
         return residents
 
-    def get_payment_tracker(self):
-        rows = self.payment_tracker_ws.get_all_records()
-        for row in rows:
-            row["UnitNo"] = str(row.get("UnitNo", "")).strip()
-        return rows
+   def get_payment_tracker(self):
 
+        if self._tracker_cache is not None:
+            return self._tracker_cache
+    
+        rows = self.payment_tracker_ws.get_all_records()
+    
+        for row in rows:
+            row["UnitNo"] = str(
+                row.get("UnitNo", "")
+            ).strip()
+    
+        self._tracker_cache = rows
+    
+        return rows
+       
     def get_charges(self):
-        return self.charges_ws.get_all_records()
+
+        if self._charges_cache is not None:
+            return self._charges_cache
+    
+        self._charges_cache = (
+            self.charges_ws.get_all_records()
+        )
+    
+        return self._charges_cache
 
     def get_pending_months(self, unit_no):
         unit_no = str(unit_no).strip()
@@ -106,15 +154,30 @@ class GoogleSheetService:
                     )
             if updates:
                 self.payment_tracker_ws.batch_update(updates)
+                self._tracker_cache = None
             return
 
         raise ValueError(f"Unit {unit_no} not found in Payment_Tracker")
 
     def get_receipts(self):
+
+        if self._receipts_cache is not None:
+            return self._receipts_cache
+    
         rows = self.receipt_ws.get_all_records()
+    
         for row in rows:
-            row["UnitNo"] = str(row.get("UnitNo", "")).strip()
-            row["MobileNo"] = str(row.get("MobileNo", "")).strip()
+    
+            row["UnitNo"] = str(
+                row.get("UnitNo", "")
+            ).strip()
+    
+            row["MobileNo"] = str(
+                row.get("MobileNo", "")
+            ).strip()
+    
+        self._receipts_cache = rows
+    
         return rows
 
     def get_next_receipt_no(self):
@@ -149,6 +212,8 @@ class GoogleSheetService:
             value_input_option="USER_ENTERED",
         )
 
+        self._receipts_cache = None
+
     def save_receipt_details(self, receipt_no, details):
         rows = [
             [receipt_no, detail["Particular"], detail["Amount"]]
@@ -180,8 +245,41 @@ class GoogleSheetService:
         return sum(float(row.get("TotalAmount", 0) or 0) for row in self.get_receipts())
 
     def pending_amount(self):
+    
+        tracker = self.get_payment_tracker()
+        residents = self.get_residents()
+    
+        resident_map = {
+            r["UnitNo"]: float(
+                r.get("MonthlyAmount", 0) or 0
+            )
+            for r in residents
+        }
+    
         total = 0.0
-        for resident in self.get_residents():
-            monthly = float(resident.get("MonthlyAmount", 0) or 0)
-            total += len(self.get_pending_months(resident["UnitNo"])) * monthly
+    
+        for row in tracker:
+    
+            unit = row.get("UnitNo")
+    
+            monthly = resident_map.get(
+                unit,
+                0
+            )
+    
+            pending = 0
+    
+            for key, value in row.items():
+    
+                if key in (
+                    "UnitNo",
+                    "StartMonth"
+                ):
+                    continue
+    
+                if str(value).strip() == "":
+                    pending += 1
+    
+            total += pending * monthly
+    
         return total
