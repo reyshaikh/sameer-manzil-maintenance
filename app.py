@@ -112,7 +112,18 @@ def collection():
             flash('Transaction/Cheque number is required for the selected payment mode.'); return redirect(url_for('collection'))
         no=next_receipt_no(); now=datetime.now(); total=sum(float(d['Amount']) for d in selected)
         rec={'ReceiptNo':no,'ReceiptDate':now.strftime('%d-%b-%Y'),'UnitNo':unit,'OwnerName':person['OwnerName'],'MobileNo':person['MobileNo'],'PeriodFrom':selected[0]['Month'],'PeriodTo':selected[-1]['Month'],'Months':','.join(d['Month'] for d in selected),'TotalAmount':str(total),'PaymentMode':mode,'TransactionID':txn,'PaymentStatus':'Paid','PDFFile':''}
-        rec['PDFFile']=generate_pdf(rec,selected)
+        pdf_file = generate_pdf(
+                rec,
+                selected
+         )
+            
+        pdf_path = RECEIPTS / pdf_file
+            
+        drive_link = gs.upload_pdf_to_drive(
+                str(pdf_path)
+        )
+
+        rec["PDFFile"] = drive_link
         gs.save_receipt(rec)
 
         gs.save_receipt_details(
