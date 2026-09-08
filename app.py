@@ -100,46 +100,104 @@ def home():
 
 @app.route('/collection', methods=['GET','POST'])
 def collection():
+
     rs = gs.get_residents()
     dues = gs.get_dues()
-    if request.method=='POST':
-        unit=request.form['unit']; months=request.form.getlist('months'); mode=request.form['payment_mode']; txn=request.form.get('transaction_id','').strip()
-        person=next((r for r in rs if r['UnitNo']==unit),None)
-        selected=[d for d in dues if d['UnitNo']==unit and d['Month'] in months and d['Status']=='Unpaid']
+
+    if request.method == 'POST':
+
+        unit = request.form['unit']
+        months = request.form.getlist('months')
+        mode = request.form['payment_mode']
+        txn = request.form.get('transaction_id', '').strip()
+
+        person = next(
+            (r for r in rs if str(r['UnitNo']) == str(unit)),
+            None
+        )
+
+        selected = [
+            d for d in dues
+            if str(d['UnitNo']) == str(unit)
+            and d['Month'] in months
+            and d['Status'] == 'Unpaid'
+        ]
+
         if not person or not selected:
-            flash('Select a unit and at least one unpaid month.'); return redirect(url_for('collection'))
-        if mode in ('UPI','Bank Transfer','Cheque') and not txn:
-            flash('Transaction/Cheque number is required for the selected payment mode.'); return redirect(url_for('collection'))
-        no=next_receipt_no(); now=datetime.now(); total=sum(float(d['Amount']) for d in selected)
-        rec={'ReceiptNo':no,'ReceiptDate':now.strftime('%d-%b-%Y'),'UnitNo':unit,'OwnerName':person['OwnerName'],'MobileNo':person['MobileNo'],'PeriodFrom':selected[0]['Month'],'PeriodTo':selected[-1]['Month'],'Months':','.join(d['Month'] for d in selected),'TotalAmount':str(total),'PaymentMode':mode,'TransactionID':txn,'PaymentStatus':'Paid','PDFFile':''}
+            flash('Select a unit and at least one unpaid month.')
+            return redirect(url_for('collection'))
+
+        if mode in ('UPI', 'Bank Transfer', 'Cheque') and not txn:
+            flash('Transaction/Cheque number is required.')
+            return redirect(url_for('collection'))
+
+        no = next_receipt_no()
+        now = datetime.now()
+
+        total = sum(
+            float(d['Amount'])
+            for d in selected
+        )
+
+        rec = {
+            'ReceiptNo': no,
+            'ReceiptDate': now.strftime('%d-%b-%Y'),
+            'UnitNo': unit,
+            'OwnerName': person['OwnerName'],
+            'MobileNo': person['MobileNo'],
+            'PeriodFrom': selected[0]['Month'],
+            'PeriodTo': selected[-1]['Month'],
+            'Months': ','.join(
+                d['Month'] for d in selected
+            ),
+            'TotalAmount': str(total),
+            'PaymentMode': mode,
+            'TransactionID': txn,
+            'PaymentStatus': 'Paid',
+            'PDFFile': ''
+        }
+
         pdf_file = generate_pdf(
-                rec,
-                selected
-         )
-            
+            rec,
+            selected
+        )
+
         pdf_path = RECEIPTS / pdf_file
-            
+
         drive_link = gs.upload_pdf_to_drive(
-                str(pdf_path)
+            str(pdf_path)
         )
 
         rec["PDFFile"] = drive_link
+
         gs.save_receipt(rec)
 
         gs.save_receipt_details(
             no,
             selected
         )
-        
+
         gs.mark_due_paid(
             unit,
             months,
             no,
             now.strftime("%Y-%m-%d")
         )
-        return redirect(url_for('receipt_result', receipt_no=no))
-    due_map={r['UnitNo']:[d for d in dues if d['UnitNo']==r['UnitNo'] and d['Status']=='Unpaid'] for r in rs}
-    return render_template('collection.html', residents=rs, due_map=due_map)
+
+        return redirect(
+            url_for(
+                'receipt_result',
+                receipt_no=no
+            )
+        )
+
+    return render_template(
+        'collection.html',
+        residents=rs,
+        due_map={}
+    )
+    
+    # end of POST block
 
 @app.route('/receipt/<receipt_no>')
 def receipt_result(receipt_no):
