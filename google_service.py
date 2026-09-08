@@ -1,5 +1,7 @@
-import os
 import json
+import os
+from datetime import datetime
+
 import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -7,372 +9,178 @@ from googleapiclient.http import MediaFileUpload
 
 
 class GoogleSheetService:
-
     def __init__(self):
-        scope = [
+        scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
+            "https://www.googleapis.com/auth/drive",
         ]
 
-        creds_dict = json.loads(
-            os.environ["GOOGLE_CREDENTIALS"]
+        credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+        credentials = Credentials.from_service_account_info(
+            credentials_info,
+            scopes=scopes,
         )
 
-        creds = Credentials.from_service_account_info(
-            creds_dict,
-            scopes=scope
-        )
+        self.client = gspread.authorize(credentials)
+        self.drive_service = build("drive", "v3", credentials=credentials)
+        self.drive_folder_id = os.environ["GOOGLE_DRIVE_FOLDER_ID"]
+        self.sheet = self.client.open(os.environ["GOOGLE_SHEET_NAME"])
 
-        self.client = gspread.authorize(creds)
-        self.drive_service = build(
-            "drive",
-            "v3",
-            credentials=creds
-        )
-        
-        self.drive_folder_id = os.environ[
-            "GOOGLE_DRIVE_FOLDER_ID"
-        ]
+        self.resident_ws = self.sheet.worksheet("Resident_Master")
+        self.payment_tracker_ws = self.sheet.worksheet("Payment_Tracker")
+        self.charges_ws = self.sheet.worksheet("Charges_Master")
+        self.receipt_ws = self.sheet.worksheet("Receipts")
+        self.details_ws = self.sheet.worksheet("Receipt_Details")
 
-        self.sheet = self.client.open(
-            os.environ["GOOGLE_SHEET_NAME"]
-        )
-
-        self.resident_ws = self.sheet.worksheet(
-            "Resident_Master"
-        )
-
-        self.receipt_ws = self.sheet.worksheet(
-            "Receipts"
-        )
-
-        self.payment_tracker_ws = self.sheet.worksheet(
-            "Payment_Tracker"
-        )
-        
-        self.charges_ws = self.sheet.worksheet(
-            "Charges_Master"
-        )
-
-        
-        self.dues_ws = self.sheet.worksheet(
-            "Monthly_Dues"
-        )
-
-        self.details_ws = self.sheet.worksheet(
-            "Receipt_Details"
-        )
-
-    
-    
-    # ---------------------------------
-    # RESIDENTS
-    # ---------------------------------
+    @staticmethod
+    def _parse_month(month_name):
+        return datetime.strptime(str(month_name).strip(), "%b-%Y")
 
     def get_residents(self):
-        rows = self.resident_ws.get_all_records()
-
         residents = []
-
-        for row in rows:
-            status = str(
-                row.get("Status", "")
-            ).strip().lower()
-
-            if status in [
-                "active",
-                "yes",
-                "y",
-                ""
-            ]:
+        for row in self.resident_ws.get_all_records():
+            status = str(row.get("Status", "")).strip().lower()
+            if status in ("active", "yes", "y", ""):
+                row["UnitNo"] = str(row.get("UnitNo", "")).strip()
+                row["MobileNo"] = str(row.get("MobileNo", "")).strip()
                 residents.append(row)
-
         return residents
 
-    # ---------------------------------
-    # DUES
-    # ---------------------------------
+    def get_payment_tracker(self):
+        rows = self.payment_tracker_ws.get_all_records()
+        for row in rows:
+            row["UnitNo"] = str(row.get("UnitNo", "")).strip()
+        return rows
 
-    def get_dues(self):
-        return self.dues_ws.get_all_records()
+    def get_charges(self):
+        return self.charges_ws.get_all_records()
 
-    def get_unpaid_dues(self):
-        dues = self.get_dues()
+    def get_pending_months(self, unit_no):
+        unit_no = str(unit_no).strip()
+        today_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        return [
-            d for d in dues
-            if str(
-                d.get("Status", "")
-            ).strip().lower() == "unpaid"
-        ]
+        for row in self.get_payment_tracker():
+            if row.get("UnitNo") != unit_no:
+                continue
 
-    def mark_due_paid(
-        self,
-        unit_no,
-        months,
-        receipt_no,
-        payment_date
-    ):
-        records = self.dues_ws.get_all_records()
+            start_text = str(row.get("StartMonth", "")).strip()
+            start_month = self._parse_month(start_text) if start_text else None
+            pending = []
 
-        for index, row in enumerate(records, start=2):
+            for header, value in row.items():
+                if header in ("UnitNo", "StartMonth"):
+                    continue
+                try:
+                    month_date = self._parse_month(header)
+                except ValueError:
+                    continue
+                if start_month and month_date < start_month:
+                    continue
+                if month_date > today_month:
+                    continue
+                if str(value).strip() == "":
+                    pending.append(header)
 
-            if (
-                row["UnitNo"] == unit_no
-                and row["Month"] in months
-            ):
-                self.dues_ws.update(
-                    f"D{index}:F{index}",
-                    [[
-                        "Paid",
-                        receipt_no,
-                        payment_date
-                    ]]
-                )
+            return sorted(pending, key=self._parse_month)
 
-    # ---------------------------------
-    # RECEIPTS
-    # ---------------------------------
+        return []
+
+    def mark_months_paid(self, unit_no, months, receipt_no):
+        unit_no = str(unit_no).strip()
+        headers = self.payment_tracker_ws.row_values(1)
+        records = self.payment_tracker_ws.get_all_records()
+
+        for row_number, row in enumerate(records, start=2):
+            if str(row.get("UnitNo", "")).strip() != unit_no:
+                continue
+
+            updates = []
+            for month in months:
+                if month in headers:
+                    column_number = headers.index(month) + 1
+                    updates.append(
+                        {
+                            "range": gspread.utils.rowcol_to_a1(row_number, column_number),
+                            "values": [[receipt_no]],
+                        }
+                    )
+            if updates:
+                self.payment_tracker_ws.batch_update(updates)
+            return
+
+        raise ValueError(f"Unit {unit_no} not found in Payment_Tracker")
 
     def get_receipts(self):
-        return self.receipt_ws.get_all_records()
+        rows = self.receipt_ws.get_all_records()
+        for row in rows:
+            row["UnitNo"] = str(row.get("UnitNo", "")).strip()
+            row["MobileNo"] = str(row.get("MobileNo", "")).strip()
+        return rows
 
     def get_next_receipt_no(self):
-
-        receipts = self.get_receipts()
-
-        year = str(
-            __import__("datetime")
-            .datetime.now()
-            .year
-        )
-
-        max_number = 0
-
-        for row in receipts:
-
-            receipt_no = str(
-                row.get(
-                    "ReceiptNo",
-                    ""
-                )
-            )
-
-            try:
-
-                parts = receipt_no.split("-")
-
-                if (
-                    len(parts) == 3
-                    and parts[1] == year
-                ):
-                    value = int(parts[2])
-
-                    if value > max_number:
-                        max_number = value
-
-            except:
-                pass
-
-        return (
-            f"REC-{year}-"
-            f"{max_number + 1:04d}"
-        )
+        year = str(datetime.now().year)
+        maximum = 0
+        for row in self.get_receipts():
+            parts = str(row.get("ReceiptNo", "")).split("-")
+            if len(parts) == 3 and parts[1] == year:
+                try:
+                    maximum = max(maximum, int(parts[2]))
+                except ValueError:
+                    pass
+        return f"REC-{year}-{maximum + 1:04d}"
 
     def save_receipt(self, receipt):
+        self.receipt_ws.append_row(
+            [
+                receipt["ReceiptNo"],
+                receipt["ReceiptDate"],
+                receipt["UnitNo"],
+                receipt["OwnerName"],
+                str(receipt["MobileNo"]),
+                receipt["PeriodFrom"],
+                receipt["PeriodTo"],
+                receipt["Months"],
+                receipt["TotalAmount"],
+                receipt["PaymentMode"],
+                receipt["TransactionID"],
+                receipt["PaymentStatus"],
+                receipt["PDFFile"],
+            ],
+            value_input_option="USER_ENTERED",
+        )
 
-        self.receipt_ws.append_row([
-            receipt["ReceiptNo"],
-            receipt["ReceiptDate"],
-            receipt["UnitNo"],
-            receipt["OwnerName"],
-            receipt["MobileNo"],
-            receipt["PeriodFrom"],
-            receipt["PeriodTo"],
-            receipt["Months"],
-            receipt["TotalAmount"],
-            receipt["PaymentMode"],
-            receipt["TransactionID"],
-            receipt["PaymentStatus"],
-            receipt["PDFFile"]
-        ])
-
-    # ---------------------------------
-    # RECEIPT DETAILS
-    # ---------------------------------
-
-    def save_receipt_details(
-        self,
-        receipt_no,
-        dues
-    ):
-
-        for d in dues:
-
-           self.details_ws.append_row([
-                receipt_no,
-                f"Maintenance {d['Month']}",
-                d["Amount"]
-         ])
+    def save_receipt_details(self, receipt_no, details):
+        rows = [
+            [receipt_no, detail["Particular"], detail["Amount"]]
+            for detail in details
+        ]
+        if rows:
+            self.details_ws.append_rows(rows, value_input_option="USER_ENTERED")
 
     def upload_pdf_to_drive(self, filepath):
-
-        filename = os.path.basename(filepath)
-    
         metadata = {
-            "name": filename,
-            "parents": [self.drive_folder_id]
+            "name": os.path.basename(filepath),
+            "parents": [self.drive_folder_id],
         }
-    
-        media = MediaFileUpload(
-            filepath,
-            mimetype="application/pdf"
-        )
-    
-        file = (
+        media = MediaFileUpload(filepath, mimetype="application/pdf", resumable=False)
+        uploaded = (
             self.drive_service.files()
-            .create(
-                body=metadata,
-                media_body=media,
-                fields="id"
-            )
+            .create(body=metadata, media_body=media, fields="id,webViewLink")
             .execute()
         )
-    
-        file_id = file["id"]
-    
+        file_id = uploaded["id"]
         self.drive_service.permissions().create(
             fileId=file_id,
-            body={
-                "type": "anyone",
-                "role": "reader"
-            }
+            body={"type": "anyone", "role": "reader"},
         ).execute()
-    
-        return f"https://drive.google.com/file/d/{file_id}/view"
-
-        # ---------------------------------
-    # PAYMENT TRACKER
-    # ---------------------------------
-    
-    def get_payment_tracker(self):
-    
-        ws = self.sheet.worksheet(
-            "Payment_Tracker"
-        )
-    
-        return ws.get_all_records()
-    
-    
-    def get_charges(self):
-    
-        ws = self.sheet.worksheet(
-            "Charges_Master"
-        )
-    
-        return ws.get_all_records()
-    
-    
-    def get_pending_months(self, unit_no):
-    
-        ws = self.sheet.worksheet(
-            "Payment_Tracker"
-        )
-    
-        rows = ws.get_all_records()
-    
-        for row in rows:
-    
-            if str(row["UnitNo"]).strip() == str(unit_no).strip():
-    
-                pending = []
-    
-                for month, value in row.items():
-    
-                    if month in [
-                        "UnitNo",
-                        "StartMonth"
-                    ]:
-                        continue
-    
-                    if str(value).strip() == "":
-                        pending.append(month)
-    
-                return pending
-    
-        return []
-    
-    
-    def mark_months_paid(
-        self,
-        unit_no,
-        months,
-        receipt_no
-    ):
-    
-        ws = self.sheet.worksheet(
-            "Payment_Tracker"
-        )
-    
-        headers = ws.row_values(1)
-    
-        records = ws.get_all_records()
-    
-        for row_num, row in enumerate(
-            records,
-            start=2
-        ):
-    
-            if str(row["UnitNo"]).strip() == str(unit_no).strip():
-    
-                for month in months:
-    
-                    if month in headers:
-    
-                        col_num = headers.index(month) + 1
-    
-                        ws.update_cell(
-                            row_num,
-                            col_num,
-                            receipt_no
-                        )
-    
-                return
-    
-    # ---------------------------------
-    # DASHBOARD
-    # ---------------------------------
+        return uploaded.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view"
 
     def total_collection(self):
-
-        receipts = self.get_receipts()
-
-        return sum(
-            float(
-                r.get(
-                    "TotalAmount",
-                    0
-                ) or 0
-            )
-            for r in receipts
-        )
+        return sum(float(row.get("TotalAmount", 0) or 0) for row in self.get_receipts())
 
     def pending_amount(self):
-
-        dues = self.get_dues()
-
-        return sum(
-            float(
-                d.get(
-                    "Amount",
-                    0
-                ) or 0
-            )
-            for d in dues
-            if str(
-                d.get(
-                    "Status",
-                    ""
-                )
-            ).lower() == "unpaid"
-        )
+        total = 0.0
+        for resident in self.get_residents():
+            monthly = float(resident.get("MonthlyAmount", 0) or 0)
+            total += len(self.get_pending_months(resident["UnitNo"])) * monthly
+        return total
