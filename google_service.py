@@ -172,6 +172,7 @@ class GoogleSheetService:
         self.drive_service.permissions().create(
             fileId=file_id,
             body={"type": "anyone", "role": "reader"},
+            supportsAllDrives=True
         ).execute()
         return uploaded.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view"
 
