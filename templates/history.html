@@ -1,1 +1,20 @@
-{% extends 'base.html' %}{% block content %}<h1>Receipt History</h1><form class="search"><input name="q" value="{{q}}" placeholder="Receipt no, unit or owner"><button class="btn">Search</button></form><div class="tablewrap"><table><tr><th>Receipt</th><th>Date</th><th>Unit</th><th>Owner</th><th>Amount</th><th>Mode</th><th>PDF</th></tr>{% for r in receipts %}<tr><td>{{r.ReceiptNo}}</td><td>{{r.ReceiptDate}}</td><td>{{r.UnitNo}}</td><td>{{r.OwnerName}}</td><td>{{money(r.TotalAmount)}}</td><td>{{r.PaymentMode}}</td><td><a href="{{url_for('download_receipt',filename=r.PDFFile)}}">Download</a></td></tr>{% else %}<tr><td colspan="7">No receipts found.</td></tr>{% endfor %}</table></div>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<h1>Receipt History</h1>
+<form class="search">
+  <input name="q" value="{{ q }}" placeholder="Receipt no, unit or owner">
+  <button class="btn">Search</button>
+</form>
+<div class="tablewrap">
+<table>
+  <tr><th>Receipt</th><th>Date</th><th>Unit</th><th>Owner</th><th>Amount</th><th>Mode</th><th>PDF</th></tr>
+  {% for r in receipts %}
+  <tr>
+    <td>{{ r.ReceiptNo }}</td><td>{{ r.ReceiptDate }}</td><td>{{ r.UnitNo }}</td><td>{{ r.OwnerName }}</td>
+    <td>{{ money(r.TotalAmount) }}</td><td>{{ r.PaymentMode }}</td>
+    <td><a href="{{ r.PDFFile }}" target="_blank" rel="noopener">View / Print</a></td>
+  </tr>
+  {% else %}<tr><td colspan="7">No receipts found.</td></tr>{% endfor %}
+</table>
+</div>
+{% endblock %}
