@@ -2,6 +2,8 @@ import os
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 
 class GoogleSheetService:
@@ -22,6 +24,15 @@ class GoogleSheetService:
         )
 
         self.client = gspread.authorize(creds)
+        self.drive_service = build(
+            "drive",
+            "v3",
+            credentials=creds
+        )
+        
+        self.drive_folder_id = os.environ[
+            "GOOGLE_DRIVE_FOLDER_ID"
+        ]
 
         self.sheet = self.client.open(
             os.environ["GOOGLE_SHEET_NAME"]
@@ -43,6 +54,8 @@ class GoogleSheetService:
             "Receipt_Details"
         )
 
+    
+    
     # ---------------------------------
     # RESIDENTS
     # ---------------------------------
@@ -187,12 +200,49 @@ class GoogleSheetService:
 
         for d in dues:
 
-            self.details_ws.append_row([
+           self.details_ws.append_row([
                 receipt_no,
-                "Maintenance Charges",
+                f"Maintenance {d['Month']}",
                 d["Amount"]
-            ])
+         ])
 
+    def upload_pdf_to_drive(self, filepath):
+
+    filename = os.path.basename(filepath)
+
+    metadata = {
+        "name": filename,
+        "parents": [self.drive_folder_id]
+    }
+
+    media = MediaFileUpload(
+        filepath,
+        mimetype="application/pdf"
+    )
+
+    file = (
+        self.drive_service.files()
+        .create(
+            body=metadata,
+            media_body=media,
+            fields="id"
+        )
+        .execute()
+    )
+
+    file_id = file["id"]
+
+    self.drive_service.permissions().create(
+        fileId=file_id,
+        body={
+            "type": "anyone",
+            "role": "reader"
+        }
+    ).execute()
+
+    return (
+        f"https://drive.google.com/file/d/{file_id}/view"
+    )
     # ---------------------------------
     # DASHBOARD
     # ---------------------------------
