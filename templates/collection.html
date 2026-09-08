@@ -4,11 +4,11 @@
 
 <h1>New Maintenance Collection</h1>
 
-<form method="post" class="panel">
+<div class="panel">
 
     <label>Select Unit</label>
 
-    <select name="unit" id="unit" required>
+    <select id="unit" name="unit">
         <option value="">Select Unit</option>
 
         {% for r in residents %}
@@ -23,12 +23,107 @@
         {% endfor %}
     </select>
 
-    <div class="info-box" id="residentInfo">
+    <div class="info-box">
 
-        <p><strong>Owner Name:</strong>
+        <p>
+            <strong>Owner Name:</strong>
             <span id="ownerName">-</span>
         </p>
 
-        <p><strong>Mobile Number:</strong>
+        <p>
+            <strong>Mobile Number:</strong>
             <span id="mobileNo">-</span>
-        </
+        </p>
+
+        <p>
+            <strong>Monthly Amount:</strong>
+            ₹<span id="monthlyAmount">0</span>
+        </p>
+
+    </div>
+
+    <hr>
+
+    <h3>Pending Months</h3>
+
+    <div id="pendingMonths">
+        <p>Select a unit to view pending months.</p>
+    </div>
+
+    <hr>
+
+    <h3>Additional Charges</h3>
+
+    {% for charge in charges %}
+
+    <div style="margin-bottom:10px;">
+
+        <label>
+
+            <input
+                type="checkbox"
+                class="chargeCheck"
+            >
+
+            {{ charge.ChargeName }}
+
+        </label>
+
+        <input
+            type="number"
+            placeholder="Amount"
+            class="chargeAmount"
+            disabled
+        >
+
+    </div>
+
+    {% endfor %}
+
+    <hr>
+
+    <h3>Total Amount</h3>
+
+    <h2>
+        ₹<span id="grandTotal">0</span>
+    </h2>
+
+</div>
+
+<script>
+
+const unit =
+    document.getElementById("unit");
+
+const ownerName =
+    document.getElementById("ownerName");
+
+const mobileNo =
+    document.getElementById("mobileNo");
+
+const monthlyAmount =
+    document.getElementById("monthlyAmount");
+
+unit.addEventListener(
+    "change",
+    function(){
+
+        const o =
+            this.options[
+                this.selectedIndex
+            ];
+
+        ownerName.textContent =
+            o.dataset.owner || "-";
+
+        mobileNo.textContent =
+            o.dataset.mobile || "-";
+
+        monthlyAmount.textContent =
+            o.dataset.monthly || "0";
+    }
+);
+
+</script>
+
+{% endblock %}
