@@ -103,6 +103,7 @@ def collection():
 
     rs = gs.get_residents()
     charges = gs.get_charges()
+    dues = gs.get_dues()
 
     if request.method == 'POST':
 
@@ -147,9 +148,7 @@ def collection():
             'MobileNo': person['MobileNo'],
             'PeriodFrom': selected[0]['Month'],
             'PeriodTo': selected[-1]['Month'],
-            'Months': ','.join(
-                d['Month'] for d in selected
-            ),
+            'Months': ','.join(d['Month'] for d in selected),
             'TotalAmount': str(total),
             'PaymentMode': mode,
             'TransactionID': txn,
@@ -157,10 +156,7 @@ def collection():
             'PDFFile': ''
         }
 
-        pdf_file = generate_pdf(
-            rec,
-            selected
-        )
+        pdf_file = generate_pdf(rec, selected)
 
         pdf_path = RECEIPTS / pdf_file
 
@@ -191,13 +187,12 @@ def collection():
             )
         )
 
-        return render_template(
-            'collection.html',
-            residents=rs,
-            charges=charges
-        )
-    
-    # end of POST block
+    # GET request
+    return render_template(
+        'collection.html',
+        residents=rs,
+        charges=charges
+    )
 
 @app.route('/receipt/<receipt_no>')
 def receipt_result(receipt_no):
