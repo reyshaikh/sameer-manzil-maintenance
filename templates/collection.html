@@ -56,28 +56,27 @@
 
     {% for charge in charges %}
 
-    <div style="margin-bottom:10px;">
-
-        <label>
-
-            <input
-                type="checkbox"
-                class="chargeCheck"
-            >
-
+    <div class="charge-row">
+    
+        <input
+            type="checkbox"
+            class="chargeCheck"
+            id="charge{{charge.ChargeID}}"
+        >
+    
+        <label for="charge{{charge.ChargeID}}">
             {{ charge.ChargeName }}
-
         </label>
-
+    
         <input
             type="number"
+            min="0"
             placeholder="Amount"
             class="chargeAmount"
-            disabled
         >
-
+    
     </div>
-
+    
     {% endfor %}
 
     <hr>
