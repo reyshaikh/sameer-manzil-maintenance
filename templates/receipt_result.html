@@ -1,37 +1,11 @@
 {% extends 'base.html' %}
-
 {% block content %}
-
 <div class="success">
-
-    <h1>Receipt Generated Successfully</h1>
-
-    <p>
-        <strong>{{ r.ReceiptNo }}</strong>
-    </p>
-
-    <p>
-        {{ r.OwnerName }}
-        |
-        {{ r.UnitNo }}
-        |
-        {{ money(r.TotalAmount) }}
-    </p>
-
-    {{ r.PDFFile }}
-        View / Print PDF
-    </a>
-
-    {{ wa }}
-        Open WhatsApp
-    </a>
-
-    <p class="note">
-        The PDF is stored permanently in Google Drive.
-        Click View / Print PDF to open, download or print the receipt.
-        WhatsApp opens with the prepared message; attach the downloaded PDF before sending.
-    </p>
-
+  <h1>Receipt Generated Successfully</h1>
+  <p><strong>{{ r.ReceiptNo }}</strong></p>
+  <p>{{ r.OwnerName }} | {{ r.UnitNo }} | {{ money(r.TotalAmount) }}</p>
+  <a class="btn" href="{{ r.PDFFile }}" target="_blank" rel="noopener">View / Print PDF</a>
+  <a class="btn whatsapp" href="{{ wa }}" target="_blank" rel="noopener">Open WhatsApp</a>
+  <p class="note">The PDF is stored in Google Drive. Open it to print or download. WhatsApp opens with the message and receipt link prepared.</p>
 </div>
-
 {% endblock %}
