@@ -10,6 +10,9 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+from google_service import GoogleSheetService
+
+gs = GoogleSheetService()
 
 app = Flask(__name__)
 app.secret_key = 'sameer-manzil-local-test'
@@ -36,7 +39,7 @@ def write_csv(path, rows, fieldnames):
 
 
 def residents():
-    return [r for r in read_csv(RESIDENTS_FILE) if r.get('Active','Yes').lower() == 'yes']
+    return gs.get_residents()
 
 
 def money(v):
@@ -44,15 +47,7 @@ def money(v):
 
 
 def next_receipt_no():
-    year = datetime.now().year
-    existing = read_csv(RECEIPTS_FILE)
-    nums=[]
-    for r in existing:
-        p=r.get('ReceiptNo','').split('-')
-        if len(p)==3 and p[1]==str(year):
-            try: nums.append(int(p[2]))
-            except ValueError: pass
-    return f"REC-{year}-{(max(nums, default=0)+1):04d}"
+    return gs.get_next_receipt_no()
 
 
 def generate_pdf(rec, selected_dues):
@@ -95,7 +90,8 @@ def generate_pdf(rec, selected_dues):
 
 @app.route('/')
 def home():
-    recs=read_csv(RECEIPTS_FILE); dues=read_csv(DUES_FILE)
+    recs = gs.get_receipts()
+    dues = gs.get_dues()
     total_units=len(residents())
     total_collected=sum(float(r['TotalAmount']) for r in recs if r.get('TotalAmount'))
     pending=sum(float(d['Amount']) for d in dues if d['Status']=='Unpaid')
@@ -104,7 +100,8 @@ def home():
 
 @app.route('/collection', methods=['GET','POST'])
 def collection():
-    rs=residents(); dues=read_csv(DUES_FILE)
+    rs = gs.get_residents()
+    dues = gs.get_dues()
     if request.method=='POST':
         unit=request.form['unit']; months=request.form.getlist('months'); mode=request.form['payment_mode']; txn=request.form.get('transaction_id','').strip()
         person=next((r for r in rs if r['UnitNo']==unit),None)
@@ -116,19 +113,26 @@ def collection():
         no=next_receipt_no(); now=datetime.now(); total=sum(float(d['Amount']) for d in selected)
         rec={'ReceiptNo':no,'ReceiptDate':now.strftime('%d-%b-%Y'),'UnitNo':unit,'OwnerName':person['OwnerName'],'MobileNo':person['MobileNo'],'PeriodFrom':selected[0]['Month'],'PeriodTo':selected[-1]['Month'],'Months':','.join(d['Month'] for d in selected),'TotalAmount':str(total),'PaymentMode':mode,'TransactionID':txn,'PaymentStatus':'Paid','PDFFile':''}
         rec['PDFFile']=generate_pdf(rec,selected)
-        recs=read_csv(RECEIPTS_FILE); recs.append(rec)
-        write_csv(RECEIPTS_FILE,recs,['ReceiptNo','ReceiptDate','UnitNo','OwnerName','MobileNo','PeriodFrom','PeriodTo','Months','TotalAmount','PaymentMode','TransactionID','PaymentStatus','PDFFile'])
-        for d in dues:
-            if d['UnitNo']==unit and d['Month'] in months and d['Status']=='Unpaid':
-                d['Status']='Paid'; d['ReceiptNo']=no; d['PaymentDate']=now.strftime('%Y-%m-%d')
-        write_csv(DUES_FILE,dues,['UnitNo','Month','Amount','Status','ReceiptNo','PaymentDate'])
+        gs.save_receipt(rec)
+
+        gs.save_receipt_details(
+            no,
+            selected
+        )
+        
+        gs.mark_due_paid(
+            unit,
+            months,
+            no,
+            now.strftime("%Y-%m-%d")
+        )
         return redirect(url_for('receipt_result', receipt_no=no))
     due_map={r['UnitNo']:[d for d in dues if d['UnitNo']==r['UnitNo'] and d['Status']=='Unpaid'] for r in rs}
     return render_template('collection.html', residents=rs, due_map=due_map)
 
 @app.route('/receipt/<receipt_no>')
 def receipt_result(receipt_no):
-    rec=next((r for r in read_csv(RECEIPTS_FILE) if r['ReceiptNo']==receipt_no),None)
+    rec=next((r for r in gs.get_receipts() if r['ReceiptNo']==receipt_no),None)
     if not rec: return 'Receipt not found',404
     mobile='91'+''.join(filter(str.isdigit,rec['MobileNo']))[-10:]
     msg=(f"Dear {rec['OwnerName']},\n\nYour maintenance payment has been received.\n"
@@ -144,13 +148,13 @@ def download_receipt(filename):
 
 @app.route('/history')
 def history():
-    q=request.args.get('q','').lower().strip(); recs=list(reversed(read_csv(RECEIPTS_FILE)))
+    q=request.args.get('q','').lower().strip(); recs=list(reversed(gs.get_receipts()))
     if q: recs=[r for r in recs if q in (r['ReceiptNo']+' '+r['UnitNo']+' '+r['OwnerName']).lower()]
     return render_template('history.html', receipts=recs, money=money, q=q)
 
 @app.route('/pending')
 def pending():
-    rs={r['UnitNo']:r for r in residents()}; dues=[d for d in read_csv(DUES_FILE) if d['Status']=='Unpaid']
+    rs={r['UnitNo']:r for r in residents()}; dues=[d for d in gs.get_dues() if d['Status']=='Unpaid']
     grouped={}
     for d in dues:
         g=grouped.setdefault(d['UnitNo'],{'owner':rs.get(d['UnitNo'],{}).get('OwnerName',''),'months':[],'total':0})
@@ -177,7 +181,7 @@ def google_test():
     )
 
     client = gspread.authorize(creds)
-
+    
     sheet = client.open(
         os.environ["GOOGLE_SHEET_NAME"]
     )
