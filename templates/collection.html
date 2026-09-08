@@ -1,508 +1,162 @@
 {% extends 'base.html' %}
-
 {% block content %}
-
 <h1>New Maintenance Collection</h1>
-
 <form method="post" class="panel" id="collectionForm">
+  <label for="unit">Select Unit</label>
+  <select id="unit" name="unit" required>
+    <option value="">Select Unit</option>
+    {% for r in residents %}
+    <option value="{{ r.UnitNo }}" data-owner="{{ r.OwnerName }}" data-mobile="{{ r.MobileNo }}" data-monthly="{{ r.MonthlyAmount }}">
+      {{ r.UnitNo }} - {{ r.OwnerName }}
+    </option>
+    {% endfor %}
+  </select>
 
-    <label for="unit">Select Unit</label>
+  <div class="info">
+    <strong id="ownerName">-</strong><br>
+    Mobile: <span id="mobileNo">-</span><br>
+    Monthly Amount: ₹<span id="monthlyAmount">0</span>
+  </div>
 
-    <select id="unit" name="unit" required>
-        <option value="">Select Unit</option>
+  <label>Pending Months</label>
+  <div id="pendingMonths" class="months"><p>Select a unit to view pending months.</p></div>
 
-        {% for r in residents %}
-        <option
-            value="{{ r.UnitNo }}"
-            data-owner="{{ r.OwnerName }}"
-            data-mobile="{{ r.MobileNo }}"
-            data-monthly="{{ r.MonthlyAmount }}"
-        >
-            {{ r.UnitNo }} - {{ r.OwnerName }}
-        </option>
-        {% endfor %}
-    </select>
+  <hr>
+  <h3>Additional Charges <small>(Optional)</small></h3>
+  {% for charge in charges %}
+  <div class="charge-row" style="margin-bottom:15px;">
+    <label style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" class="chargeCheck" data-id="{{ charge.ChargeID }}">
+      {{ charge.ChargeName }}
+    </label>
+    <input type="number" min="0" step="0.01" class="chargeAmount" data-id="{{ charge.ChargeID }}"
+           name="charge_amount_{{ charge.ChargeID }}" placeholder="Enter amount" disabled>
+  </div>
+  {% endfor %}
 
-    <div class="info" id="residentInfo">
-        <strong id="ownerName">-</strong><br>
-        Mobile: <span id="mobileNo">-</span><br>
-        Monthly Amount: ₹<span id="monthlyAmount">0</span>
-    </div>
-
+  <hr>
+  <h3>Payment Summary</h3>
+  <div class="info">
+    <p>Maintenance: <strong>₹<span id="maintenanceTotal">0</span></strong></p>
+    <p>Additional Charges: <strong>₹<span id="additionalTotal">0</span></strong></p>
     <hr>
+    <h2>Total: ₹<span id="grandTotal">0</span></h2>
+  </div>
 
-    <h3>Pending Months</h3>
+  <label for="mode">Payment Mode</label>
+  <select name="payment_mode" id="mode" required>
+    <option value="Cash">Cash</option>
+    <option value="UPI">UPI</option>
+    <option value="Bank Transfer">Bank Transfer</option>
+    <option value="Cheque">Cheque</option>
+  </select>
 
-    <div id="pendingMonths" class="months">
-        <p>Select a unit to view pending months.</p>
-    </div>
+  <div id="txnwrap" style="display:none;">
+    <label for="txn">Transaction / Cheque Number</label>
+    <input type="text" name="transaction_id" id="txn">
+  </div>
 
-    <hr>
-
-    <h3>Additional Charges <small>(Optional)</small></h3>
-
-    <div id="chargesSection">
-
-        {% for charge in charges %}
-
-        <div class="charge-row" style="margin-bottom: 15px;">
-
-            <label style="display: flex; align-items: center; gap: 8px;">
-
-                <input
-                    type="checkbox"
-                    class="chargeCheck"
-                    data-id="{{ charge.ChargeID }}"
-                >
-
-                {{ charge.ChargeName }}
-
-            </label>
-
-            <input
-                type="number"
-                min="0"
-                step="0.01"
-                class="chargeAmount"
-                data-id="{{ charge.ChargeID }}"
-                name="charge_amount_{{ charge.ChargeID }}"
-                placeholder="Enter amount"
-                disabled
-            >
-
-        </div>
-
-        {% endfor %}
-
-    </div>
-
-    <hr>
-
-    <h3>Payment Summary</h3>
-
-    <div class="info">
-
-        <p>
-            Maintenance:
-            <strong>₹<span id="maintenanceTotal">0</span></strong>
-        </p>
-
-        <p>
-            Additional Charges:
-            <strong>₹<span id="additionalTotal">0</span></strong>
-        </p>
-
-        <hr>
-
-        <h2>
-            Total:
-            ₹<span id="grandTotal">0</span>
-        </h2>
-
-    </div>
-
-    <label for="mode">Payment Mode</label>
-
-    <select name="payment_mode" id="mode" required>
-        <option value="Cash">Cash</option>
-        <option value="UPI">UPI</option>
-        <option value="Bank Transfer">Bank Transfer</option>
-        <option value="Cheque">Cheque</option>
-    </select>
-
-    <div id="txnwrap" style="display: none;">
-
-        <label for="txn">Transaction / Cheque Number</label>
-
-        <input
-            type="text"
-            name="transaction_id"
-            id="txn"
-        >
-
-    </div>
-
-    <button
-        class="btn"
-        type="submit"
-        style="margin-top: 20px;"
-    >
-        Generate Receipt
-    </button>
-
+  <button class="btn" type="submit" style="margin-top:20px;">Generate Receipt</button>
 </form>
 
 <script>
-
 const tracker = {{ payment_tracker | tojson }};
-
-const unit = document.getElementById("unit");
-const ownerName = document.getElementById("ownerName");
-const mobileNo = document.getElementById("mobileNo");
-const monthlyAmount = document.getElementById("monthlyAmount");
-const pendingMonths = document.getElementById("pendingMonths");
-
-const maintenanceTotal =
-    document.getElementById("maintenanceTotal");
-
-const additionalTotal =
-    document.getElementById("additionalTotal");
-
-const grandTotal =
-    document.getElementById("grandTotal");
-
-const mode = document.getElementById("mode");
-const txn = document.getElementById("txn");
-const txnwrap = document.getElementById("txnwrap");
-
+const unit = document.getElementById('unit');
+const ownerName = document.getElementById('ownerName');
+const mobileNo = document.getElementById('mobileNo');
+const monthlyAmount = document.getElementById('monthlyAmount');
+const pendingMonths = document.getElementById('pendingMonths');
+const maintenanceTotal = document.getElementById('maintenanceTotal');
+const additionalTotal = document.getElementById('additionalTotal');
+const grandTotal = document.getElementById('grandTotal');
+const mode = document.getElementById('mode');
+const txn = document.getElementById('txn');
+const txnwrap = document.getElementById('txnwrap');
 
 function formatMoney(value) {
-
-    return Number(value || 0).toLocaleString(
-        "en-IN",
-        {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-        }
-    );
-
+  return Number(value || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
 }
-
-
-function monthValue(monthText) {
-
-    const monthNumbers = {
-        Jan: 0,
-        Feb: 1,
-        Mar: 2,
-        Apr: 3,
-        May: 4,
-        Jun: 5,
-        Jul: 6,
-        Aug: 7,
-        Sep: 8,
-        Oct: 9,
-        Nov: 10,
-        Dec: 11
-    };
-
-    const parts = monthText.split("-");
-
-    return (
-        Number(parts[1]) * 12
-        + monthNumbers[parts[0]]
-    );
-
-}
-
 
 function calculate() {
-
-    const monthly =
-        Number(monthlyAmount.textContent || 0);
-
-    const selectedMonthCount =
-        document.querySelectorAll(
-            'input[name="months"]:checked'
-        ).length;
-
-    const maintenance =
-        monthly * selectedMonthCount;
-
-    let additional = 0;
-
-    document.querySelectorAll(
-        ".chargeCheck:checked"
-    ).forEach(
-        checkbox => {
-
-            const amountInput =
-                document.querySelector(
-                    '.chargeAmount[data-id="'
-                    + checkbox.dataset.id
-                    + '"]'
-                );
-
-            additional += Number(
-                amountInput.value || 0
-            );
-
-        }
-    );
-
-    maintenanceTotal.textContent =
-        formatMoney(maintenance);
-
-    additionalTotal.textContent =
-        formatMoney(additional);
-
-    grandTotal.textContent =
-        formatMoney(
-            maintenance + additional
-        );
-
+  const monthly = Number(monthlyAmount.textContent || 0);
+  const count = document.querySelectorAll('input[name="months"]:checked').length;
+  const maintenance = monthly * count;
+  let additional = 0;
+  document.querySelectorAll('.chargeCheck:checked').forEach(check => {
+    const input = document.querySelector('.chargeAmount[data-id="' + check.dataset.id + '"]');
+    additional += Number(input.value || 0);
+  });
+  maintenanceTotal.textContent = formatMoney(maintenance);
+  additionalTotal.textContent = formatMoney(additional);
+  grandTotal.textContent = formatMoney(maintenance + additional);
 }
 
+function monthValue(text) {
+  const map = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  const parts = text.split('-');
+  return Number(parts[1]) * 12 + map[parts[0]];
+}
 
 function renderPendingMonths() {
-
-    const selectedOption =
-        unit.options[unit.selectedIndex];
-
-    ownerName.textContent =
-        selectedOption.dataset.owner || "-";
-
-    mobileNo.textContent =
-        selectedOption.dataset.mobile || "-";
-
-    monthlyAmount.textContent =
-        selectedOption.dataset.monthly || "0";
-
-    const selectedUnit =
-        String(unit.value).trim();
-
-    if (!selectedUnit) {
-
-        pendingMonths.innerHTML =
-            "<p>Select a unit to view pending months.</p>";
-
-        calculate();
-
-        return;
-    }
-
-    const trackerRow =
-        tracker.find(
-            row =>
-                String(row.UnitNo).trim()
-                === selectedUnit
-        );
-
-    if (!trackerRow) {
-
-        pendingMonths.innerHTML =
-            "<p>No Payment_Tracker entry found for this unit.</p>";
-
-        calculate();
-
-        return;
-    }
-
-    const currentDate = new Date();
-
-    const currentMonthValue =
-        currentDate.getFullYear() * 12
-        + currentDate.getMonth();
-
-    const startMonth =
-        String(trackerRow.StartMonth || "").trim();
-
-    const startMonthValue =
-        startMonth
-            ? monthValue(startMonth)
-            : Number.NEGATIVE_INFINITY;
-
-    const pending = [];
-
-    Object.keys(trackerRow).forEach(
-        month => {
-
-            if (
-                month === "UnitNo"
-                || month === "StartMonth"
-            ) {
-                return;
-            }
-
-            let value;
-
-            try {
-                value = monthValue(month);
-            }
-            catch {
-                return;
-            }
-
-            if (value < startMonthValue) {
-                return;
-            }
-
-            if (value > currentMonthValue) {
-                return;
-            }
-
-            if (
-                String(
-                    trackerRow[month] || ""
-                ).trim() === ""
-            ) {
-                pending.push(month);
-            }
-
-        }
-    );
-
-    pending.sort(
-        (first, second) =>
-            monthValue(first)
-            - monthValue(second)
-    );
-
-    if (pending.length === 0) {
-
-        pendingMonths.innerHTML =
-            "<p>No pending months.</p>";
-
-    } else {
-
-        pendingMonths.innerHTML =
-            pending.map(
-                month => `
-
-                    <label class="month">
-
-                        <input
-                            type="checkbox"
-                            name="months"
-                            value="${month}"
-                            checked
-                        >
-
-                        ${month}
-
-                        <span>
-                            ₹${formatMoney(
-                                selectedOption.dataset.monthly
-                            )}
-                        </span>
-
-                    </label>
-
-                `
-            ).join("");
-
-    }
-
-    document.querySelectorAll(
-        'input[name="months"]'
-    ).forEach(
-        checkbox => {
-
-            checkbox.addEventListener(
-                "change",
-                calculate
-            );
-
-        }
-    );
-
+  const option = unit.options[unit.selectedIndex];
+  ownerName.textContent = option.dataset.owner || '-';
+  mobileNo.textContent = option.dataset.mobile || '-';
+  monthlyAmount.textContent = option.dataset.monthly || '0';
+  const selectedUnit = String(unit.value).trim();
+  if (!selectedUnit) {
+    pendingMonths.innerHTML = '<p>Select a unit to view pending months.</p>';
     calculate();
+    return;
+  }
+  const row = tracker.find(item => String(item.UnitNo).trim() === selectedUnit);
+  if (!row) {
+    pendingMonths.innerHTML = '<p>No Payment_Tracker entry found for this unit.</p>';
+    calculate();
+    return;
+  }
+  const now = new Date();
+  const currentValue = now.getFullYear() * 12 + now.getMonth();
+  const startValue = row.StartMonth ? monthValue(row.StartMonth) : -Infinity;
+  const pending = Object.keys(row)
+    .filter(key => key !== 'UnitNo' && key !== 'StartMonth')
+    .filter(key => monthValue(key) >= startValue && monthValue(key) <= currentValue)
+    .filter(key => String(row[key] || '').trim() === '')
+    .sort((a, b) => monthValue(a) - monthValue(b));
 
+  pendingMonths.innerHTML = pending.length
+    ? pending.map(month => '<label class="month"><input type="checkbox" name="months" value="' + month + '" checked> ' + month + '<span>₹' + formatMoney(option.dataset.monthly) + '</span></label>').join('')
+    : '<p>No pending months.</p>';
+
+  document.querySelectorAll('input[name="months"]').forEach(box => box.addEventListener('change', calculate));
+  calculate();
 }
 
+unit.addEventListener('change', renderPendingMonths);
 
-unit.addEventListener(
-    "change",
-    renderPendingMonths
-);
+document.querySelectorAll('.chargeCheck').forEach(check => {
+  check.addEventListener('change', function () {
+    const input = document.querySelector('.chargeAmount[data-id="' + this.dataset.id + '"]');
+    input.disabled = !this.checked;
+    input.required = this.checked;
+    if (!this.checked) input.value = '';
+    calculate();
+  });
+});
 
+document.querySelectorAll('.chargeAmount').forEach(input => input.addEventListener('input', calculate));
 
-document.querySelectorAll(
-    ".chargeCheck"
-).forEach(
-    checkbox => {
+mode.addEventListener('change', function () {
+  const required = this.value !== 'Cash';
+  txnwrap.style.display = required ? 'block' : 'none';
+  txn.required = required;
+  if (!required) txn.value = '';
+});
 
-        checkbox.addEventListener(
-            "change",
-            function () {
-
-                const amountInput =
-                    document.querySelector(
-                        '.chargeAmount[data-id="'
-                        + this.dataset.id
-                        + '"]'
-                    );
-
-                amountInput.disabled =
-                    !this.checked;
-
-                amountInput.required =
-                    this.checked;
-
-                if (!this.checked) {
-                    amountInput.value = "";
-                }
-
-                calculate();
-
-            }
-        );
-
-    }
-);
-
-
-document.querySelectorAll(
-    ".chargeAmount"
-).forEach(
-    amountInput => {
-
-        amountInput.addEventListener(
-            "input",
-            calculate
-        );
-
-    }
-);
-
-
-mode.addEventListener(
-    "change",
-    function () {
-
-        const transactionRequired =
-            this.value !== "Cash";
-
-        txnwrap.style.display =
-            transactionRequired
-                ? "block"
-                : "none";
-
-        txn.required =
-            transactionRequired;
-
-        if (!transactionRequired) {
-            txn.value = "";
-        }
-
-    }
-);
-
-
-document
-    .getElementById("collectionForm")
-    .addEventListener(
-        "submit",
-        function (event) {
-
-            const selectedMonths =
-                document.querySelectorAll(
-                    'input[name="months"]:checked'
-                );
-
-            if (selectedMonths.length === 0) {
-
-                event.preventDefault();
-
-                alert(
-                    "Please select at least one pending month."
-                );
-
-            }
-
-        }
-    );
-
+document.getElementById('collectionForm').addEventListener('submit', function (event) {
+  if (!document.querySelector('input[name="months"]:checked')) {
+    event.preventDefault();
+    alert('Please select at least one pending month.');
+  }
+});
 </script>
-
 {% endblock %}
