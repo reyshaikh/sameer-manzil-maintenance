@@ -134,7 +134,12 @@ def collection():
 def receipt_result(receipt_no):
     rec=next((r for r in gs.get_receipts() if r['ReceiptNo']==receipt_no),None)
     if not rec: return 'Receipt not found',404
-    mobile='91'+''.join(filter(str.isdigit,rec['MobileNo']))[-10:]
+    mobile = '91' + ''.join(
+    filter(
+        str.isdigit,
+        str(rec['MobileNo'])
+    )
+    )[-10:]
     msg=(f"Dear {rec['OwnerName']},\n\nYour maintenance payment has been received.\n"
          f"Receipt No: {rec['ReceiptNo']}\nAmount: {money(rec['TotalAmount'])}\n"
          f"Period: {rec['PeriodFrom']} to {rec['PeriodTo']}\n\n"
