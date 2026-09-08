@@ -124,6 +124,81 @@ unit.addEventListener(
     }
 );
 
+const tracker =
+{{ payment_tracker|tojson }};
+
+unit.addEventListener(
+    "change",
+    function(){
+
+        const o =
+            this.options[
+                this.selectedIndex
+            ];
+
+        ownerName.textContent =
+            o.dataset.owner || "-";
+
+        mobileNo.textContent =
+            o.dataset.mobile || "-";
+
+        monthlyAmount.textContent =
+            o.dataset.monthly || "0";
+
+        const row =
+            tracker.find(
+                x => String(x.UnitNo)
+                === String(this.value)
+            );
+
+        const pendingDiv =
+            document.getElementById(
+                "pendingMonths"
+            );
+
+        if(!row){
+            pendingDiv.innerHTML =
+                "<p>No data found.</p>";
+            return;
+        }
+
+        let html = "";
+
+        Object.keys(row).forEach(
+            month => {
+
+                if(
+                    month === "UnitNo" ||
+                    month === "StartMonth"
+                ){
+                    return;
+                }
+
+                if(
+                    !row[month]
+                ){
+
+                    html += `
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="months"
+                            value="${month}"
+                            checked
+                        >
+                        ${month}
+                    </label><br>
+                    `;
+                }
+
+            }
+        );
+
+        pendingDiv.innerHTML =
+            html || "<p>No pending months.</p>";
+
+    }
+);
 </script>
 
 {% endblock %}
