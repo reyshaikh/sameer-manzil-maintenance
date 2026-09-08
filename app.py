@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import urllib.parse
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for, send_from_directory
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
@@ -221,12 +221,27 @@ def collection():
 
         pdf_file = generate_pdf(receipt, details)
         pdf_path = RECEIPTS / pdf_file
-        receipt["PDFFile"] = gs.upload_pdf_to_drive(str(pdf_path))
 
+        try:
+        
+            receipt["PDFFile"] = gs.upload_pdf_to_drive(
+                str(pdf_path)
+            )
+        
+        except Exception as e:
+        
+            print(
+                "Drive upload failed:",
+                e
+            )
+        
+            receipt["PDFFile"] = f"/receipts/{pdf_file}"
+        
         gs.save_receipt(receipt)
         gs.save_receipt_details(receipt_no, details)
         gs.mark_months_paid(unit, valid_months, receipt_no)
-
+        
+        print(f"Receipt Generated: {receipt_no}"    )
         return redirect(url_for("receipt_result", receipt_no=receipt_no))
 
     return render_template(
@@ -260,7 +275,15 @@ def receipt_result(receipt_no):
     whatsapp_url = f"https://wa.me/{mobile}?text={urllib.parse.quote(message)}"
     return render_template("receipt_result.html", r=receipt, wa=whatsapp_url, money=money)
 
+@app.route('/receipts/<path:filename>')
+def download_receipt(filename):
 
+    return send_from_directory(
+        RECEIPTS,
+        filename,
+        as_attachment=False
+    )
+    
 @app.route("/history")
 def history():
     query = request.args.get("q", "").lower().strip()
