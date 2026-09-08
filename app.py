@@ -418,20 +418,61 @@ def collection():
         
 @app.route('/receipt/<receipt_no>')
 def receipt_result(receipt_no):
-    rec=next((r for r in gs.get_receipts() if r['ReceiptNo']==receipt_no),None)
-    if not rec: return 'Receipt not found',404
-    mobile = '91' + ''.join(
-    filter(
-        str.isdigit,
-        str(rec['MobileNo'])
+
+    receipt = next(
+        (
+            row for row in gs.get_receipts()
+            if str(
+                row.get(
+                    'ReceiptNo',
+                    ''
+                )
+            ) == receipt_no
+        ),
+        None
     )
+
+    if not receipt:
+        return 'Receipt not found', 404
+
+    mobile_digits = ''.join(
+        filter(
+            str.isdigit,
+            str(
+                receipt.get(
+                    'MobileNo',
+                    ''
+                )
+            )
+        )
     )[-10:]
-    msg=(f"Dear {rec['OwnerName']},\n\nYour maintenance payment has been received.\n"
-         f"Receipt No: {rec['ReceiptNo']}\nAmount: {money(rec['TotalAmount'])}\n"
-         f"Period: {rec['PeriodFrom']} to {rec['PeriodTo']}\n\n"
-         f"Please attach the downloaded PDF receipt before sending.\n\nRegards,\nSameer Manzil Co-op. Society")
-    wa=f"https://wa.me/{mobile}?text={urllib.parse.quote(msg)}"
-    return render_template('receipt_result.html', r=rec, wa=wa, money=money)
+
+    mobile = '91' + mobile_digits
+
+    message = (
+        f"Dear {receipt.get('OwnerName', '')},\n\n"
+        f"Your maintenance payment has been received.\n"
+        f"Receipt No: {receipt.get('ReceiptNo', '')}\n"
+        f"Amount: {money(receipt.get('TotalAmount', 0))}\n"
+        f"Period: {receipt.get('PeriodFrom', '')} "
+        f"to {receipt.get('PeriodTo', '')}\n\n"
+        f"Receipt link:\n"
+        f"{receipt.get('PDFFile', '')}\n\n"
+        f"Regards,\n"
+        f"Sameer Manzil Co-op. Society"
+    )
+
+    whatsapp_url = (
+        f"https://wa.me/{mobile}"
+        f"?text={urllib.parse.quote(message)}"
+    )
+
+    return render_template(
+        'receipt_result.html',
+        r=receipt,
+        wa=whatsapp_url,
+        money=money
+    )
 
 @app.route('/receipts/<path:filename>')
 def download_receipt(filename):
