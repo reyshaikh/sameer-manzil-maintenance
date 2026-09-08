@@ -71,9 +71,42 @@ def generate_pdf(rec, selected_dues):
     t=Table(info, colWidths=[80,180,95,150])
     t.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.5,colors.grey),('BACKGROUND',(0,0),(0,-1),colors.HexColor('#f2f2f2')),('BACKGROUND',(2,0),(2,-1),colors.HexColor('#f2f2f2')),('FONTNAME',(0,0),(-1,-1),'Helvetica'),('FONTSIZE',(0,0),(-1,-1),9),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('BOTTOMPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),6)]))
     story.append(t); story.append(Spacer(1,12))
-    rows=[['Sr. No.','PARTICULARS','Amount (₹)']]
-    for i,d in enumerate(selected_dues,1): rows.append([str(i), f"Maintenance Charges - {d['Month']}", f"{float(d['Amount']):,.2f}"])
-    rows.append(['','TOTAL AMOUNT',f"{float(rec['TotalAmount']):,.2f}"])
+    rows = [
+        [
+            'Sr. No.',
+            'PARTICULARS',
+            'Amount (₹)'
+        ]
+    ]
+    
+    for index, detail in enumerate(
+        selected_dues,
+        start=1
+    ):
+    
+        particular = (
+            detail.get(
+                'Particular'
+            )
+            or
+            f"Maintenance {detail.get('Month', '')}"
+        )
+    
+        rows.append(
+            [
+                str(index),
+                particular,
+                f"{float(detail['Amount']):,.2f}"
+            ]
+        )
+    
+    rows.append(
+        [
+            '',
+            'TOTAL AMOUNT',
+            f"{float(rec['TotalAmount']):,.2f}"
+        ]
+    )
     ct=Table(rows, colWidths=[60,335,110])
     ct.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.6,colors.grey),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#1f4e78')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTNAME',(0,-1),(-1,-1),'Helvetica-Bold'),('ALIGN',(0,0),(0,-1),'CENTER'),('ALIGN',(2,1),(2,-1),'RIGHT'),('BACKGROUND',(0,-1),(-1,-1),colors.HexColor('#eaf2f8')),('FONTSIZE',(0,0),(-1,-1),9),('BOTTOMPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),7)]))
     story.append(ct); story.append(Spacer(1,12))
@@ -98,104 +131,291 @@ def home():
     paid_units=len(set(r['UnitNo'] for r in recs))
     return render_template('home.html', total_units=total_units, total_collected=total_collected, pending=pending, paid_units=paid_units, money=money)
 
-@app.route('/collection', methods=['GET','POST'])
+@app.route('/collection', methods=['GET', 'POST'])
 def collection():
 
-    rs = gs.get_residents()
+    residents_list = gs.get_residents()
     charges = gs.get_charges()
-    dues = gs.get_dues()
+    payment_tracker = gs.get_payment_tracker()
 
     if request.method == 'POST':
 
-        unit = request.form['unit']
-        months = request.form.getlist('months')
-        mode = request.form['payment_mode']
-        txn = request.form.get('transaction_id', '').strip()
+        unit = request.form.get(
+            'unit',
+            ''
+        ).strip()
 
-        person = next(
-            (r for r in rs if str(r['UnitNo']) == str(unit)),
+        selected_months = request.form.getlist(
+            'months'
+        )
+
+        payment_mode = request.form.get(
+            'payment_mode',
+            'Cash'
+        )
+
+        transaction_id = request.form.get(
+            'transaction_id',
+            ''
+        ).strip()
+
+        resident = next(
+            (
+                row for row in residents_list
+                if str(
+                    row.get(
+                        'UnitNo',
+                        ''
+                    )
+                ).strip() == unit
+            ),
             None
         )
 
-        selected = [
-            d for d in dues
-            if str(d['UnitNo']) == str(unit)
-            and d['Month'] in months
-            and d['Status'] == 'Unpaid'
+        if not resident:
+
+            flash(
+                'Please select a valid unit.'
+            )
+
+            return redirect(
+                url_for(
+                    'collection'
+                )
+            )
+
+        actual_pending_months =
+            gs.get_pending_months(
+                unit
+            )
+
+        valid_months = [
+            month
+            for month in selected_months
+            if month in actual_pending_months
         ]
 
-        if not person or not selected:
-            flash('Select a unit and at least one unpaid month.')
-            return redirect(url_for('collection'))
+        if not valid_months:
 
-        if mode in ('UPI', 'Bank Transfer', 'Cheque') and not txn:
-            flash('Transaction/Cheque number is required.')
-            return redirect(url_for('collection'))
+            flash(
+                'Please select at least one pending month.'
+            )
 
-        no = next_receipt_no()
-        now = datetime.now()
+            return redirect(
+                url_for(
+                    'collection'
+                )
+            )
 
-        total = sum(
-            float(d['Amount'])
-            for d in selected
+        if (
+            payment_mode
+            in (
+                'UPI',
+                'Bank Transfer',
+                'Cheque'
+            )
+            and not transaction_id
+        ):
+
+            flash(
+                'Transaction or cheque number is required.'
+            )
+
+            return redirect(
+                url_for(
+                    'collection'
+                )
+            )
+
+        monthly_amount = float(
+            resident.get(
+                'MonthlyAmount',
+                0
+            ) or 0
         )
 
-        rec = {
-            'ReceiptNo': no,
-            'ReceiptDate': now.strftime('%d-%b-%Y'),
-            'UnitNo': unit,
-            'OwnerName': person['OwnerName'],
-            'MobileNo': person['MobileNo'],
-            'PeriodFrom': selected[0]['Month'],
-            'PeriodTo': selected[-1]['Month'],
-            'Months': ','.join(d['Month'] for d in selected),
-            'TotalAmount': str(total),
-            'PaymentMode': mode,
-            'TransactionID': txn,
-            'PaymentStatus': 'Paid',
-            'PDFFile': ''
+        receipt_details = []
+
+        for month in valid_months:
+
+            receipt_details.append(
+                {
+                    'Month': month,
+                    'Particular':
+                        f'Maintenance {month}',
+                    'Amount': monthly_amount
+                }
+            )
+
+        for charge in charges:
+
+            charge_id = str(
+                charge.get(
+                    'ChargeID',
+                    ''
+                )
+            ).strip()
+
+            charge_name = str(
+                charge.get(
+                    'ChargeName',
+                    'Additional Charge'
+                )
+            ).strip()
+
+            amount_text = request.form.get(
+                f'charge_amount_{charge_id}',
+                ''
+            ).strip()
+
+            if not amount_text:
+                continue
+
+            try:
+
+                charge_amount =
+                    float(
+                        amount_text
+                    )
+
+            except ValueError:
+
+                flash(
+                    f'Invalid amount for {charge_name}.'
+                )
+
+                return redirect(
+                    url_for(
+                        'collection'
+                    )
+                )
+
+            if charge_amount > 0:
+
+                receipt_details.append(
+                    {
+                        'Particular':
+                            charge_name,
+                        'Amount':
+                            charge_amount
+                    }
+                )
+
+        total_amount = sum(
+            float(
+                detail['Amount']
+            )
+            for detail in receipt_details
+        )
+
+        receipt_no =
+            next_receipt_no()
+
+        now =
+            datetime.now()
+
+        receipt = {
+
+            'ReceiptNo':
+                receipt_no,
+
+            'ReceiptDate':
+                now.strftime(
+                    '%d-%b-%Y'
+                ),
+
+            'UnitNo':
+                unit,
+
+            'OwnerName':
+                resident.get(
+                    'OwnerName',
+                    ''
+                ),
+
+            'MobileNo':
+                str(
+                    resident.get(
+                        'MobileNo',
+                        ''
+                    )
+                ),
+
+            'PeriodFrom':
+                valid_months[0],
+
+            'PeriodTo':
+                valid_months[-1],
+
+            'Months':
+                ','.join(
+                    valid_months
+                ),
+
+            'TotalAmount':
+                str(
+                    total_amount
+                ),
+
+            'PaymentMode':
+                payment_mode,
+
+            'TransactionID':
+                transaction_id,
+
+            'PaymentStatus':
+                'Paid',
+
+            'PDFFile':
+                ''
         }
 
-        pdf_file = generate_pdf(rec, selected)
-
-        pdf_path = RECEIPTS / pdf_file
-
-        drive_link = gs.upload_pdf_to_drive(
-            str(pdf_path)
+        pdf_file = generate_pdf(
+            receipt,
+            receipt_details
         )
 
-        rec["PDFFile"] = drive_link
+        pdf_path =
+            RECEIPTS / pdf_file
 
-        gs.save_receipt(rec)
+        drive_link =
+            gs.upload_pdf_to_drive(
+                str(
+                    pdf_path
+                )
+            )
+
+        receipt['PDFFile'] =
+            drive_link
+
+        gs.save_receipt(
+            receipt
+        )
 
         gs.save_receipt_details(
-            no,
-            selected
+            receipt_no,
+            receipt_details
         )
 
-        gs.mark_due_paid(
+        gs.mark_months_paid(
             unit,
-            months,
-            no,
-            now.strftime("%Y-%m-%d")
+            valid_months,
+            receipt_no
         )
 
         return redirect(
             url_for(
                 'receipt_result',
-                receipt_no=no
+                receipt_no=receipt_no
             )
         )
 
-    # GET request
-    payment_tracker = gs.get_payment_tracker()
-
     return render_template(
+
         'collection.html',
-        residents=rs,
-        charges=charges,
-        payment_tracker=payment_tracker
-    )
+
+        residents
+        
 @app.route('/receipt/<receipt_no>')
 def receipt_result(receipt_no):
     rec=next((r for r in gs.get_receipts() if r['ReceiptNo']==receipt_no),None)
