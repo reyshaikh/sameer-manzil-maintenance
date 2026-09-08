@@ -76,7 +76,7 @@ class GoogleSheetService:
     
         return residents
 
-   def get_payment_tracker(self):
+    def get_payment_tracker(self):
 
         if self._tracker_cache is not None:
             return self._tracker_cache
