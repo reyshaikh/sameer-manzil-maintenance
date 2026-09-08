@@ -208,41 +208,39 @@ class GoogleSheetService:
 
     def upload_pdf_to_drive(self, filepath):
 
-    filename = os.path.basename(filepath)
-
-    metadata = {
-        "name": filename,
-        "parents": [self.drive_folder_id]
-    }
-
-    media = MediaFileUpload(
-        filepath,
-        mimetype="application/pdf"
-    )
-
-    file = (
-        self.drive_service.files()
-        .create(
-            body=metadata,
-            media_body=media,
-            fields="id"
-        )
-        .execute()
-    )
-
-    file_id = file["id"]
-
-    self.drive_service.permissions().create(
-        fileId=file_id,
-        body={
-            "type": "anyone",
-            "role": "reader"
+        filename = os.path.basename(filepath)
+    
+        metadata = {
+            "name": filename,
+            "parents": [self.drive_folder_id]
         }
-    ).execute()
-
-    return (
-        f"https://drive.google.com/file/d/{file_id}/view"
-    )
+    
+        media = MediaFileUpload(
+            filepath,
+            mimetype="application/pdf"
+        )
+    
+        file = (
+            self.drive_service.files()
+            .create(
+                body=metadata,
+                media_body=media,
+                fields="id"
+            )
+            .execute()
+        )
+    
+        file_id = file["id"]
+    
+        self.drive_service.permissions().create(
+            fileId=file_id,
+            body={
+                "type": "anyone",
+                "role": "reader"
+            }
+        ).execute()
+    
+        return f"https://drive.google.com/file/d/{file_id}/view"
     # ---------------------------------
     # DASHBOARD
     # ---------------------------------
