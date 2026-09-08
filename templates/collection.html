@@ -233,6 +233,17 @@ unit.addEventListener(
 
         pendingDiv.innerHTML =
             html || "<p>No pending months.</p>";
+        
+        document.querySelectorAll(
+            'input[name="months"]'
+        ).forEach(
+            x => x.addEventListener(
+                "change",
+                calculate
+            )
+        );
+
+calculate();
 
     }
 );
