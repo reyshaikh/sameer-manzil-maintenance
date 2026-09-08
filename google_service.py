@@ -241,6 +241,95 @@ class GoogleSheetService:
         ).execute()
     
         return f"https://drive.google.com/file/d/{file_id}/view"
+
+        # ---------------------------------
+    # PAYMENT TRACKER
+    # ---------------------------------
+    
+    def get_payment_tracker(self):
+    
+        ws = self.sheet.worksheet(
+            "Payment_Tracker"
+        )
+    
+        return ws.get_all_records()
+    
+    
+    def get_charges(self):
+    
+        ws = self.sheet.worksheet(
+            "Charges_Master"
+        )
+    
+        return ws.get_all_records()
+    
+    
+    def get_pending_months(self, unit_no):
+    
+        ws = self.sheet.worksheet(
+            "Payment_Tracker"
+        )
+    
+        rows = ws.get_all_records()
+    
+        for row in rows:
+    
+            if str(row["UnitNo"]).strip() == str(unit_no).strip():
+    
+                pending = []
+    
+                for month, value in row.items():
+    
+                    if month in [
+                        "UnitNo",
+                        "StartMonth"
+                    ]:
+                        continue
+    
+                    if str(value).strip() == "":
+                        pending.append(month)
+    
+                return pending
+    
+        return []
+    
+    
+    def mark_months_paid(
+        self,
+        unit_no,
+        months,
+        receipt_no
+    ):
+    
+        ws = self.sheet.worksheet(
+            "Payment_Tracker"
+        )
+    
+        headers = ws.row_values(1)
+    
+        records = ws.get_all_records()
+    
+        for row_num, row in enumerate(
+            records,
+            start=2
+        ):
+    
+            if str(row["UnitNo"]).strip() == str(unit_no).strip():
+    
+                for month in months:
+    
+                    if month in headers:
+    
+                        col_num = headers.index(month) + 1
+    
+                        ws.update_cell(
+                            row_num,
+                            col_num,
+                            receipt_no
+                        )
+    
+                return
+    
     # ---------------------------------
     # DASHBOARD
     # ---------------------------------
