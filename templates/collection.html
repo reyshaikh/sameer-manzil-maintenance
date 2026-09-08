@@ -126,6 +126,44 @@ unit.addEventListener(
 const tracker =
 {{ payment_tracker|tojson }};
 
+function calculate(){
+
+    const monthly =
+        Number(
+            monthlyAmount.textContent || 0
+        );
+
+    const selectedMonths =
+        document.querySelectorAll(
+            'input[name="months"]:checked'
+        ).length;
+
+    const maintenance =
+        monthly * selectedMonths;
+
+    let additional = 0;
+
+    document.querySelectorAll(
+        ".chargeAmount"
+    ).forEach(
+        x => {
+            additional += Number(
+                x.value || 0
+            );
+        }
+    );
+
+    document.getElementById(
+        "grandTotal"
+    ).textContent =
+        (
+            maintenance +
+            additional
+        ).toLocaleString(
+            "en-IN"
+        );
+
+}
 unit.addEventListener(
     "change",
     function(){
