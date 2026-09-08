@@ -188,12 +188,14 @@ def collection():
         )
 
     # GET request
+    payment_tracker = gs.get_payment_tracker()
+
     return render_template(
         'collection.html',
         residents=rs,
-        charges=charges
+        charges=charges,
+        payment_tracker=payment_tracker
     )
-
 @app.route('/receipt/<receipt_no>')
 def receipt_result(receipt_no):
     rec=next((r for r in gs.get_receipts() if r['ReceiptNo']==receipt_no),None)
