@@ -102,7 +102,7 @@ def home():
 def collection():
 
     rs = gs.get_residents()
-    dues = gs.get_dues()
+    charges = gs.get_charges()
 
     if request.method == 'POST':
 
@@ -191,11 +191,11 @@ def collection():
             )
         )
 
-    return render_template(
-        'collection.html',
-        residents=rs,
-        due_map={}
-    )
+        return render_template(
+            'collection.html',
+            residents=rs,
+            charges=charges
+        )
     
     # end of POST block
 
