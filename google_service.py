@@ -46,6 +46,15 @@ class GoogleSheetService:
             "Receipts"
         )
 
+        self.payment_tracker_ws = self.sheet.worksheet(
+            "Payment_Tracker"
+        )
+        
+        self.charges_ws = self.sheet.worksheet(
+            "Charges_Master"
+        )
+
+        
         self.dues_ws = self.sheet.worksheet(
             "Monthly_Dues"
         )
