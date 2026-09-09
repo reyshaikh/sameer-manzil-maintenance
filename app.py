@@ -15,10 +15,7 @@ from google_service import GoogleSheetService
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sameer-manzil-change-this")
-ADMIN_PASSWORD = os.environ.get(
-    "ADMIN_PASSWORD",
-    "sameer123"
-)
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
 BASE = Path(__file__).resolve().parent
 RECEIPTS = BASE / "receipts"
 RECEIPTS.mkdir(exist_ok=True)
@@ -207,7 +204,20 @@ def collection():
         selected_months = request.form.getlist("months")
         payment_mode = request.form.get("payment_mode", "Cash")
         transaction_id = request.form.get("transaction_id", "").strip()
+        admin_password = request.form.get(
+            "admin_password",
+            ""
+        )
 
+        if admin_password != ADMIN_PASSWORD:
+
+            flash(
+                "Invalid Admin Password"
+            )
+
+            return redirect(
+                url_for("collection")
+            )
         resident = next((row for row in residents if str(row.get("UnitNo", "")).strip() == unit), None)
         if not resident:
             flash("Please select a valid unit.")
