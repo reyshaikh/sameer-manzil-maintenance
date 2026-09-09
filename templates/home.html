@@ -1,1 +1,57 @@
-{% extends 'base.html' %}{% block content %}<h1>Dashboard</h1><div class="cards"><div class="card"><span>Total Units</span><strong>{{total_units}}</strong></div><div class="card"><span>Units with Receipts</span><strong>{{paid_units}}</strong></div><div class="card green"><span>Total Collected</span><strong>{{money(total_collected)}}</strong></div><div class="card orange"><span>Pending Amount</span><strong>{{money(pending)}}</strong></div></div><div class="actions"><a class="btn" href="{{url_for('collection')}}">+ New Collection</a><a class="btn secondary" href="{{url_for('pending')}}">View Pending Dues</a></div>{% endblock %}
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Dashboard</h1>
+
+<div class="cards">
+
+    <div class="card">
+        <span>Total Units</span>
+        <strong>{{ total_units }}</strong>
+    </div>
+
+    <div class="card">
+        <span>Units with Receipts</span>
+        <strong>{{ paid_units }}</strong>
+    </div>
+
+    <div class="card green">
+        <span>Total Collected</span>
+        <strong>{{ money(total_collected) }}</strong>
+    </div>
+
+    <div class="card red">
+        <span>Total Expenses</span>
+        <strong>{{ money(total_expenses) }}</strong>
+    </div>
+
+    <div class="card blue">
+        <span>Available Balance</span>
+        <strong>{{ money(available_balance) }}</strong>
+    </div>
+
+    <div class="card orange">
+        <span>Pending Amount</span>
+        <strong>{{ money(pending) }}</strong>
+    </div>
+
+</div>
+
+<div class="actions">
+
+    <a class="btn" href="{{ url_for('collection') }}">
+        + New Collection
+    </a>
+
+    <a class="btn secondary" href="{{ url_for('pending') }}">
+        View Pending Dues
+    </a>
+
+    <a class="btn secondary" href="{{ url_for('expenses') }}">
+        Manage Expenses
+    </a>
+
+</div>
+
+{% endblock %}
