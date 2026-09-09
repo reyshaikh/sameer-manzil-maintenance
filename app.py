@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import urllib.parse
 
-from flask import Flask, flash, redirect, render_template, request, url_for, send_from_directory
+from flask import Flask, flash, redirect, render_template, request, url_for, send_from_directory,session
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
@@ -15,7 +15,10 @@ from google_service import GoogleSheetService
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sameer-manzil-change-this")
-
+ADMIN_PASSWORD = os.environ.get(
+    "ADMIN_PASSWORD",
+    "sameer123"
+)
 BASE = Path(__file__).resolve().parent
 RECEIPTS = BASE / "receipts"
 RECEIPTS.mkdir(exist_ok=True)
@@ -133,7 +136,43 @@ def generate_pdf(receipt, details):
 
     doc.build(story)
     return path.name
+ADMIN_PASSWORD = os.environ.get(
+    "ADMIN_PASSWORD",
+    "sameer123"
+)
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    if request.method == "POST":
+
+        password = request.form.get(
+            "password",
+            ""
+        )
+
+        if password == ADMIN_PASSWORD:
+
+            session["admin"] = True
+
+            return redirect(
+                url_for("collection")
+            )
+
+        flash("Invalid Password")
+
+    return render_template(
+        "login.html"
+    )
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect(
+        url_for("home")
+    )
 
 @app.route("/")
 def home():
@@ -154,6 +193,11 @@ def home():
 
 @app.route("/collection", methods=["GET", "POST"])
 def collection():
+    if not session.get("admin"):
+
+        return redirect(
+            url_for("login")
+        )
     residents = gs.get_residents()
     charges = gs.get_charges()
     payment_tracker = gs.get_payment_tracker()
