@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Financial Summary</h1>
+
+<div class="panel">
+
+    <form method="GET">
+
+        <label>From Date</label>
+
+        <input
+            type="date"
+            name="from_date"
+            value="{{ from_date }}"
+            required
+        >
+
+        <label>To Date</label>
+
+        <input
+            type="date"
+            name="to_date"
+            value="{{ to_date }}"
+            required
+        >
+
+        <button
+            type="submit"
+            class="btn"
+        >
+            Generate Summary
+        </button>
+
+    </form>
+
+</div>
+
+{% if report %}
+
+<div class="cards">
+
+    <div class="card green">
+        <span>Total Collection</span>
+        <strong>{{ money(report.total_collection) }}</strong>
+    </div>
+
+    <div class="card red">
+        <span>Total Expenses</span>
+        <strong>{{ money(report.total_expenses) }}</strong>
+    </div>
+
+    <div class="card blue">
+        <span>Available Balance</span>
+        <strong>{{ money(report.balance) }}</strong>
+    </div>
+
+    <div class="card orange">
+        <span>Pending Amount</span>
+        <strong>{{ money(report.pending_amount) }}</strong>
+    </div>
+
+</div>
+
+{% endif %}
+
+{% endblock %}
