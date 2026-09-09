@@ -338,6 +338,46 @@ def download_receipt(filename):
         as_attachment=False
     )
     
+@app.route("/expenses", methods=["GET", "POST"])
+def expenses():
+
+    if not session.get("admin"):
+
+        return redirect(
+            url_for("login")
+        )
+
+    if request.method == "POST":
+
+        expense = {
+            "ExpenseID": gs.get_next_expense_no(),
+            "Date": request.form.get("date"),
+            "Category": request.form.get("category"),
+            "Description": request.form.get("description"),
+            "Vendor": request.form.get("vendor"),
+            "Amount": request.form.get("amount"),
+            "PaidBy": request.form.get("paid_by"),
+            "Remarks": request.form.get("remarks"),
+        }
+
+        gs.save_expense(expense)
+
+        flash("Expense Saved Successfully")
+
+        return redirect(
+            url_for("expenses")
+        )
+
+    return render_template(
+        "expenses.html",
+        expenses=list(
+            reversed(
+                gs.get_expenses()
+            )
+        ),
+        money=money
+    )
+    
 @app.route("/history")
 def history():
     query = request.args.get("q", "").lower().strip()
