@@ -173,15 +173,36 @@ def logout():
 
 @app.route("/")
 def home():
+
     residents = gs.get_residents()
+
     receipts = gs.get_receipts()
+
     total_collected = gs.total_collection()
+
+    total_expenses = gs.total_expenses()
+
+    available_balance = (
+        total_collected
+        - total_expenses
+    )
+
     pending = gs.pending_amount()
-    paid_units = len({row.get("UnitNo") for row in receipts if row.get("UnitNo")})
+
+    paid_units = len(
+        {
+            row.get("UnitNo")
+            for row in receipts
+            if row.get("UnitNo")
+        }
+    )
+
     return render_template(
         "home.html",
         total_units=len(residents),
         total_collected=total_collected,
+        total_expenses=total_expenses,
+        available_balance=available_balance,
         pending=pending,
         paid_units=paid_units,
         money=money,
@@ -349,6 +370,20 @@ def expenses():
 
     if request.method == "POST":
 
+        admin_password = request.form.get(
+        "admin_password",
+        ""
+        )
+    
+        if admin_password != ADMIN_PASSWORD:
+    
+            flash(
+                "Invalid Admin Password"
+            )
+    
+            return redirect(
+                url_for("expenses")
+            )
         expense = {
             "ExpenseID": gs.get_next_expense_no(),
             "Date": request.form.get("date"),
