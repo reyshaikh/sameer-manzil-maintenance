@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Expense Management</h1>
+
+<div class="panel">
+
+    <h2>Add New Expense</h2>
+
+    <form method="POST">
+
+        <label>Date</label>
+        <input
+            type="date"
+            name="date"
+            required
+        >
+
+        <label>Category</label>
+        <select
+            name="category"
+            required
+        >
+            <option value="">Select Category</option>
+            <option>Electricity</option>
+            <option>Water</option>
+            <option>Cleaning</option>
+            <option>Repairs</option>
+            <option>Security</option>
+            <option>Lift Maintenance</option>
+            <option>Salary</option>
+            <option>Other</option>
+        </select>
+
+        <label>Description</label>
+        <input
+            type="text"
+            name="description"
+            required
+        >
+
+        <label>Vendor</label>
+        <input
+            type="text"
+            name="vendor"
+        >
+
+        <label>Amount</label>
+        <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="amount"
+            required
+        >
+
+        <label>Paid By</label>
+        <input
+            type="text"
+            name="paid_by"
+        >
+
+        <label>Remarks</label>
+        <textarea
+            name="remarks"
+        ></textarea>
+
+        <button
+            type="submit"
+            class="btn"
+            style="margin-top:15px;"
+        >
+            Save Expense
+        </button>
+
+    </form>
+
+</div>
+
+<hr>
+
+<h2>Expense History</h2>
+
+<table>
+
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Vendor</th>
+            <th>Amount</th>
+            <th>Paid By</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {% for e in expenses %}
+
+        <tr>
+            <td>{{ e.ExpenseID }}</td>
+            <td>{{ e.Date }}</td>
+            <td>{{ e.Category }}</td>
+            <td>{{ e.Description }}</td>
+            <td>{{ e.Vendor }}</td>
+            <td>{{ money(e.Amount) }}</td>
+            <td>{{ e.PaidBy }}</td>
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+{% endblock %}
