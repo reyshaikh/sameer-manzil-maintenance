@@ -31,6 +31,7 @@ class GoogleSheetService:
         self.charges_ws = self.sheet.worksheet("Charges_Master")
         self.receipt_ws = self.sheet.worksheet("Receipts")
         self.details_ws = self.sheet.worksheet("Receipt_Details")
+        self.expense_ws = self.sheet.worksheet("Expenses")
         self._residents_cache = None
         self._charges_cache = None
         self._tracker_cache = None
@@ -240,6 +241,70 @@ class GoogleSheetService:
             supportsAllDrives=True
         ).execute()
         return uploaded.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view"
+
+    def get_expenses(self):
+
+        return self.expense_ws.get_all_records()
+
+
+    def get_next_expense_no(self):
+    
+        expenses = self.get_expenses()
+    
+        maximum = 0
+    
+        for row in expenses:
+    
+            expense_id = str(
+                row.get("ExpenseID", "")
+            )
+    
+            try:
+    
+                maximum = max(
+                    maximum,
+                    int(
+                        expense_id.replace(
+                            "EXP-",
+                            ""
+                        )
+                    )
+                )
+    
+            except:
+                pass
+    
+        return f"EXP-{maximum + 1:04d}"
+    
+    
+    def save_expense(self, expense):
+    
+        self.expense_ws.append_row(
+            [
+                expense["ExpenseID"],
+                expense["Date"],
+                expense["Category"],
+                expense["Description"],
+                expense["Vendor"],
+                expense["Amount"],
+                expense["PaidBy"],
+                expense["Remarks"]
+            ],
+            value_input_option="USER_ENTERED"
+        )
+    
+    
+    def total_expenses(self):
+    
+        return sum(
+            float(
+                row.get(
+                    "Amount",
+                    0
+                ) or 0
+            )
+            for row in self.get_expenses()
+        )
 
     def total_collection(self):
         return sum(float(row.get("TotalAmount", 0) or 0) for row in self.get_receipts())
