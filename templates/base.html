@@ -1,41 +1,56 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Maintenance System</title>
+    <title>Sameer Manzil Maintenance System</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
-</head>SAMEER MANZIL</b>
+    <linkl_for('static', filename='style.css') }}
+</head>
+
+<body>
+
+<header>
+
+    <div>
+        <b>SAMEER MANZIL</b>
         <small>Maintenance Collection System</small>
     </div>
 
     <nav>
 
-        <a}">
+         }}">
             Dashboard
         </a>
 
-         }}">
-            New Collection
+        <a href="{{ url_for(' Collection
         </a>
 
-        <a href           Pending Dues
+        <a href="{{ url_for('ding Dues
         </a>
 
          }}">
             Receipts
         </a>
 
-        <a href="{{       Expenses
+         }}">
+            Expenses
         </a>
 
         {% if session.get('admin') %}
-        <a href="{{ url_for('out
+
+        <a}">
+            Logout
         </a>
+
+        {% else %}
+
+        <a}">
+            Admin Login
+        </a>
+
         {% endif %}
 
     </nav>
@@ -45,11 +60,19 @@
 <main>
 
     {% with messages = get_flashed_messages() %}
-        {% for m in messages %}
-            <div class="alert">
-                {{ m }}
-            </div>
-        {% endfor %}
+
+        {% if messages %}
+
+            {% for message in messages %}
+
+                <div class="alert">
+                    {{ message }}
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
     {% endwith %}
 
     {% block content %}
@@ -58,4 +81,5 @@
 </main>
 
 </body>
+
 </html>
