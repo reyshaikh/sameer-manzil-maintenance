@@ -19,7 +19,8 @@
         <a href="{{ url_for('pending') }}">Pending Dues</a>
         <a href="{{ url_for('history') }}">Receipts</a>
         <a href="{{ url_for('expenses') }}">Expenses</a>
-
+        <a href="{{ url_for('financial_summary') }}"> Financial Summary</a>
+        
         {% if session.get('admin') %}
             <a href="{{ url_for('logout') }}">Logout</a>
         {% else %}
