@@ -1,85 +1,43 @@
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <title>Sameer Manzil Maintenance System</title>
-
-    <linkl_for('static', filename='style.css') }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
-
 <header>
-
     <div>
         <b>SAMEER MANZIL</b>
         <small>Maintenance Collection System</small>
     </div>
 
     <nav>
-
-         }}">
-            Dashboard
-        </a>
-
-        <a href="{{ url_for(' Collection
-        </a>
-
-        <a href="{{ url_for('ding Dues
-        </a>
-
-         }}">
-            Receipts
-        </a>
-
-         }}">
-            Expenses
-        </a>
+        <a href="{{ url_for('home') }}">Dashboard</a>
+        <a href="{{ url_for('collection') }}">New Collection</a>
+        <a href="{{ url_for('pending') }}">Pending Dues</a>
+        <a href="{{ url_for('history') }}">Receipts</a>
+        <a href="{{ url_for('expenses') }}">Expenses</a>
 
         {% if session.get('admin') %}
-
-        <a}">
-            Logout
-        </a>
-
+            <a href="{{ url_for('logout') }}">Logout</a>
         {% else %}
-
-        <a}">
-            Admin Login
-        </a>
-
+            <a href="{{ url_for('login') }}">Admin Login</a>
         {% endif %}
-
     </nav>
-
 </header>
 
 <main>
-
     {% with messages = get_flashed_messages() %}
-
         {% if messages %}
-
             {% for message in messages %}
-
-                <div class="alert">
-                    {{ message }}
-                </div>
-
+                <div class="alert">{{ message }}</div>
             {% endfor %}
-
         {% endif %}
-
     {% endwith %}
 
-    {% block content %}
-    {% endblock %}
-
+    {% block content %}{% endblock %}
 </main>
-
 </body>
-
 </html>
