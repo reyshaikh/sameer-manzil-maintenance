@@ -12,6 +12,8 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 
 from google_service import GoogleSheetService
 
+from datetime import datetime
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sameer-manzil-change-this")
@@ -446,33 +448,86 @@ def pending():
 @app.route("/financial-summary")
 def financial_summary():
 
-    from_date = request.args.get(
-        "from_date",
-        ""
-    )
-
-    to_date = request.args.get(
-        "to_date",
-        ""
-    )
+    from_date = request.args.get("from_date", "")
+    to_date = request.args.get("to_date", "")
 
     report = None
 
     if from_date and to_date:
 
+        from_dt = datetime.strptime(
+            from_date,
+            "%Y-%m-%d"
+        )
+
+        to_dt = datetime.strptime(
+            to_date,
+            "%Y-%m-%d"
+        )
+
+        receipts = gs.get_receipts()
+        expenses = gs.get_expenses()
+
+        total_collection = 0
+
+        for row in receipts:
+
+            try:
+
+                receipt_date = datetime.strptime(
+                    row["ReceiptDate"],
+                    "%d-%b-%Y"
+                )
+
+                if from_dt <= receipt_date <= to_dt:
+
+                    total_collection += float(
+                        row.get(
+                            "TotalAmount",
+                            0
+                        ) or 0
+                    )
+
+            except:
+                pass
+
+        total_expenses = 0
+
+        for row in expenses:
+
+            try:
+
+                expense_date = datetime.strptime(
+                    row["Date"],
+                    "%Y-%m-%d"
+                )
+
+                if from_dt <= expense_date <= to_dt:
+
+                    total_expenses += float(
+                        row.get(
+                            "Amount",
+                            0
+                        ) or 0
+                    )
+
+            except:
+                pass
+
         report = {
 
-            "total_collection": gs.total_collection(),
+            "total_collection":
+                total_collection,
 
-            "total_expenses": gs.total_expenses(),
+            "total_expenses":
+                total_expenses,
 
             "balance":
-                gs.total_collection()
-                - gs.total_expenses(),
+                total_collection
+                - total_expenses,
 
             "pending_amount":
                 gs.pending_amount()
-
         }
 
     return render_template(
