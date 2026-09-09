@@ -443,6 +443,45 @@ def pending():
     return render_template("pending.html", grouped=grouped, money=money)
 
 
+@app.route("/financial-summary")
+def financial_summary():
+
+    from_date = request.args.get(
+        "from_date",
+        ""
+    )
+
+    to_date = request.args.get(
+        "to_date",
+        ""
+    )
+
+    report = None
+
+    if from_date and to_date:
+
+        report = {
+
+            "total_collection": gs.total_collection(),
+
+            "total_expenses": gs.total_expenses(),
+
+            "balance":
+                gs.total_collection()
+                - gs.total_expenses(),
+
+            "pending_amount":
+                gs.pending_amount()
+
+        }
+
+    return render_template(
+        "financial_summary.html",
+        from_date=from_date,
+        to_date=to_date,
+        report=report,
+        money=money
+    )
 @app.route("/google-test")
 def google_test():
     return f"Connected Successfully: {gs.sheet.title}"
