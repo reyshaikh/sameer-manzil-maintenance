@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card" style="max-width:400px;margin:40px auto;">
+
+    <h2>Admin Login</h2>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div style="color:red;margin-bottom:10px;">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+
+        <label>Password</label>
+
+        <input
+            type="password"
+            name="password"
+            required
+            style="width:100%;padding:10px;margin-top:5px;margin-bottom:15px;"
+        >
+
+        <button
+            type="submit"
+            style="width:100%;padding:10px;"
+        >
+            Login
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}
