@@ -37,29 +37,23 @@
         <tr>
 
             <td>{{ r.ReceiptNo }}</td>
-
+        
             <td>{{ r.ReceiptDate }}</td>
-
+        
             <td>{{ r.UnitNo }}</td>
-
+        
             <td>{{ r.OwnerName }}</td>
-
+        
             <td>{{ money(r.TotalAmount) }}</td>
-
+        
             <td>{{ r.PaymentMode }}</td>
-
-            <td>
-
-                 }}"
-                    target="_blank"
-                >
-                    View / Regenerate PDF
-                </a>
-
+        
+            <td> 
+                    <a href="{{ url_for('regenerate_receipt', receipt_no=r.) }}" target="_blank">
+                        View / Regenerate PDF
+                    </a>
             </td>
-
-        </tr>
-
+         </tr>
         {% else %}
 
         <tr>
