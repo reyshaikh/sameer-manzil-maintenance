@@ -1,38 +1,73 @@
 {% extends 'base.html' %}
+
 {% block content %}
+
 <h1>Receipt History</h1>
+
 <form class="search">
-  <input name="q" value="{{ q }}" placeholder="Receipt no, unit or owner">
-  <button class="btn">Search</button>
+    <input
+        name="q"
+        value="{{ q }}"
+        placeholder="Receipt no, unit or owner"
+    >
+
+    <button class="btn">
+        Search
+    </button>
 </form>
+
 <div class="tablewrap">
-<table>
-  <tr>
 
-    <td>{{ r.ReceiptNo }}</td>
+    <table>
 
-    <td>{{ r.ReceiptDate }}</td>
+        <tr>
+            <th>Receipt</th>
+            <th>Date</th>
+            <th>Unit</th>
+            <th>Owner</th>
+            <th>Amount</th>
+            <th>Mode</th>
+            <th>Receipt</th>
+        </tr>
 
-    <td>{{ r.UnitNo }}</td>
+        {% for r in receipts %}
 
-    <td>{{ r.OwnerName }}</td>
+        <tr>
 
-    <td>{{ money(r.TotalAmount) }}</td>
+            <td>{{ r.ReceiptNo }}</td>
 
-    <td>{{ r.PaymentMode }}</td>
+            <td>{{ r.ReceiptDate }}</td>
 
-    <td>
+            <td>{{ r.UnitNo }}</td>
 
-         }}"
-            target="_blank"
-        >
-            View / Regenerate PDF
-        </a>
+            <td>{{ r.OwnerName }}</td>
 
-    </td>
+            <td>{{ money(r.TotalAmount) }}</td>
 
-</tr>
-  {% else %}<tr><td colspan="7">No receipts found.</td></tr>{% endfor %}
-</table>
+            <td>{{ r.PaymentMode }}</td>
+
+            <td>
+
+                {{ url_for('regenerate_receipt', receipt_no=r.ReceiptNo) }}
+                    View / Regenerate PDF
+                </a>
+
+            </td>
+
+        </tr>
+
+        {% else %}
+
+        <tr>
+            <td colspan="7">
+                No receipts found.
+            </td>
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
 </div>
+
 {% endblock %}
