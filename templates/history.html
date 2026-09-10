@@ -5,6 +5,7 @@
 <h1>Receipt History</h1>
 
 <form class="search">
+
     <input
         name="q"
         value="{{ q }}"
@@ -14,6 +15,7 @@
     <button class="btn">
         Search
     </button>
+
 </form>
 
 <div class="tablewrap">
@@ -48,7 +50,9 @@
 
             <td>
 
-                {{ url_for('regenerate_receipt', receipt_no=r.ReceiptNo) }}
+                 }}"
+                    target="_blank"
+                >
                     View / Regenerate PDF
                 </a>
 
@@ -59,9 +63,11 @@
         {% else %}
 
         <tr>
+
             <td colspan="7">
                 No receipts found.
             </td>
+
         </tr>
 
         {% endfor %}
