@@ -223,6 +223,38 @@ class GoogleSheetService:
         if rows:
             self.details_ws.append_rows(rows, value_input_option="USER_ENTERED")
 
+    def get_receipt_details(self, receipt_no):
+
+        receipt_no = str(receipt_no).strip()
+    
+        rows = self.details_ws.get_all_records()
+    
+        details = []
+    
+        for row in rows:
+    
+            current_receipt_no = str(
+                row.get("ReceiptNo", "")
+            ).strip()
+    
+            if current_receipt_no != receipt_no:
+                continue
+    
+            details.append(
+                {
+                    "Particular": str(
+                        row.get("Particular", "")
+                    ).strip(),
+    
+                    "Amount": float(
+                        row.get("Amount", 0) or 0
+                    )
+                }
+            )
+    
+        return details
+    
+    
     def upload_pdf_to_drive(self, filepath):
         metadata = {
             "name": os.path.basename(filepath),
