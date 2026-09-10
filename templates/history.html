@@ -5,7 +5,6 @@
 <h1>Receipt History</h1>
 
 <form class="search">
-
     <input
         name="q"
         value="{{ q }}"
@@ -15,7 +14,6 @@
     <button class="btn">
         Search
     </button>
-
 </form>
 
 <div class="tablewrap">
@@ -35,33 +33,23 @@
         {% for r in receipts %}
 
         <tr>
-
             <td>{{ r.ReceiptNo }}</td>
-        
             <td>{{ r.ReceiptDate }}</td>
-        
             <td>{{ r.UnitNo }}</td>
-        
             <td>{{ r.OwnerName }}</td>
-        
             <td>{{ money(r.TotalAmount) }}</td>
-        
             <td>{{ r.PaymentMode }}</td>
-        
-            <td> 
-                    <a href="{{ url_for('regenerate_receipt', receipt_no=r.) }}" target="_blank">
-                        View / Regenerate PDF
-                    </a>
+            <td>
+                <a href="{{ url_for('regenerate_receipt', receipt_no=r.ReceiptNo) }}" target="_blank">
+                    View / Regenerate PDF
+                </a>
             </td>
-         </tr>
+        </tr>
+
         {% else %}
 
         <tr>
-
-            <td colspan="7">
-                No receipts found.
-            </td>
-
+            <td colspan="7">No receipts found.</td>
         </tr>
 
         {% endfor %}
