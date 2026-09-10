@@ -14,7 +14,6 @@ from google_service import GoogleSheetService
 
 from datetime import datetime
 
-
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sameer-manzil-change-this")
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
@@ -414,7 +413,58 @@ def expenses():
         ),
         money=money
     )
-    
+
+@app.route("/receipt/<receipt_no>/regenerate")
+def regenerate_receipt(receipt_no):
+
+    receipt = next(
+        (
+            row
+            for row in gs.get_receipts()
+            if str(
+                row.get("ReceiptNo", "")
+            ).strip() == str(
+                receipt_no
+            ).strip()
+        ),
+        None
+    )
+
+    if not receipt:
+
+        flash("Receipt was not found.")
+
+        return redirect(
+            url_for("history")
+        )
+
+    details = gs.get_receipt_details(
+        receipt_no
+    )
+
+    if not details:
+
+        flash(
+            "Receipt details were not found. "
+            "The PDF cannot be regenerated."
+        )
+
+        return redirect(
+            url_for("history")
+        )
+
+    pdf_file = generate_pdf(
+        receipt,
+        details
+    )
+
+    return redirect(
+        url_for(
+            "download_receipt",
+            filename=pdf_file
+        )
+    )
+
 @app.route("/history")
 def history():
     query = request.args.get("q", "").lower().strip()
