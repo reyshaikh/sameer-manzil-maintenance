@@ -21,6 +21,9 @@ BASE = Path(__file__).resolve().parent
 RECEIPTS = BASE / "receipts"
 RECEIPTS.mkdir(exist_ok=True)
 
+EXPENSE_RECEIPTS = BASE / "expense_receipts"
+EXPENSE_RECEIPTS.mkdir(exist_ok=True)
+
 gs = GoogleSheetService()
 
 
@@ -134,10 +137,7 @@ def generate_pdf(receipt, details):
 
     doc.build(story)
     return path.name
-ADMIN_PASSWORD = os.environ.get(
-    "ADMIN_PASSWORD",
-    "sameer123"
-)
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -463,6 +463,138 @@ def regenerate_receipt(receipt_no):
             "download_receipt",
             filename=pdf_file
         )
+    )
+
+def generate_expense_pdf(expense):
+
+    pdf_name = f"{expense['ExpenseID']}.pdf"
+
+    pdf_path = EXPENSE_RECEIPTS / pdf_name
+
+    doc = SimpleDocTemplate(
+        str(pdf_path),
+        pagesize=A4
+    )
+
+    styles = getSampleStyleSheet()
+
+    story = []
+
+    story.append(
+        Paragraph(
+            "SAMEER MANZIL CO-OP. SOCIETY",
+            styles["Title"]
+        )
+    )
+
+    story.append(
+        Spacer(1, 20)
+    )
+
+    story.append(
+        Paragraph(
+            "EXPENSE VOUCHER",
+            styles["Heading2"]
+        )
+    )
+
+    story.append(
+        Spacer(1, 20)
+    )
+
+    data = [
+
+        ["Expense ID",
+         expense.get("ExpenseID", "")],
+
+        ["Date",
+         expense.get("Date", "")],
+
+        ["Category",
+         expense.get("Category", "")],
+
+        ["Vendor",
+         expense.get("Vendor", "")],
+
+        ["Description",
+         expense.get("Description", "")],
+
+        ["Amount",
+         f"₹{expense.get('Amount', '')}"],
+
+        ["Paid By",
+         expense.get("PaidBy", "")],
+
+        ["Remarks",
+         expense.get("Remarks", "")]
+    ]
+
+    table = Table(
+        data,
+        colWidths=[120, 300]
+    )
+
+    table.setStyle(
+        TableStyle([
+            ('GRID',
+             (0,0),
+             (-1,-1),
+             1,
+             colors.black),
+
+            ('BACKGROUND',
+             (0,0),
+             (0,-1),
+             colors.lightgrey)
+        ])
+    )
+
+    story.append(table)
+
+    doc.build(story)
+
+    return pdf_name
+
+
+@app.route("/expense/<expense_id>/regenerate")
+def regenerate_expense(expense_id):
+
+    expense = next(
+        (
+            row
+            for row in gs.get_expenses()
+            if str(
+                row.get(
+                    "ExpenseID",
+                    ""
+                )
+            ).strip() == str(
+                expense_id
+            ).strip()
+        ),
+        None
+    )
+
+    if not expense:
+
+        flash(
+            "Expense not found."
+        )
+
+        return redirect(
+            url_for(
+                "expenses"
+            )
+        )
+
+    pdf_file = generate_expense_pdf(
+        expense
+    )
+
+    return send_from_directory(
+        EXPENSE_RECEIPTS,
+        pdf_file,
+        as_attachment=False
     )
 
 @app.route("/history")
